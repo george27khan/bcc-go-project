@@ -9,10 +9,9 @@ type Task struct {
 	Created time.Time
 }
 
-func NewTask(timeout time.Duration) *Task {
-	return &Task{
+func NewTask(timeout time.Duration) Task {
+	return Task{
 		Timeout: timeout,
 		Status:  "PROCESS",
-		Created: time.Now(),
 	}
 }

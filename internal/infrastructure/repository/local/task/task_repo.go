@@ -2,9 +2,10 @@ package task
 
 import (
 	"bcc-go-project/internal/domain/entity"
-	"bcc-go-project/internal/domain/service/task"
+	"bcc-go-project/internal/usecase/task"
 	"context"
 	"sync"
+	"time"
 )
 
 var _ task.TaskRepositiry = (*TaskRepository)(nil)
@@ -28,6 +29,7 @@ func (r *TaskRepository) Create(ctx context.Context, task entity.Task) (id int, 
 	defer r.mu.Unlock()
 	r.tasks = append(r.tasks, task) // пишем новую таску
 	task.Id = r.id                  //выдем таску ID
-	r.id++                          // сдвигаем счетчик
+	task.Created = time.Now()
+	r.id++ // сдвигаем счетчик
 	return task.Id, nil
 }

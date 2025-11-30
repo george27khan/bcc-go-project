@@ -2,6 +2,7 @@ package api
 
 import (
 	"bcc-go-project/internal/domain/entity"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -11,9 +12,14 @@ import (
 	"time"
 )
 
+type DownloadInitUseCase interface {
+	CreateTask(ctx context.Context, task entity.Task, files []entity.File) (id int, err error)
+}
+
 // ServerImpl реализует интерфейс сервера
 type ServerImpl struct {
 	StrictServerInterface // встраиваем базовую реализацию
+	DownloadInit          DownloadInitUseCase
 }
 
 func validateURL(u string) error {
@@ -65,6 +71,7 @@ func badRequest(w http.ResponseWriter, code string, err error) {
 }
 
 func (s *ServerImpl) PostDownloads(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	var reqBody DownloadsRequest
 	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -88,6 +95,12 @@ func (s *ServerImpl) PostDownloads(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	task := entity.NewTask(timeout)
+	files := make([]entity.File, len(reqBody.Files))
+	for _, file := range reqBody.Files {
+		files = append(files, entity.NewFile(file.Url))
+	}
+
+	_, _ = s.DownloadInit.CreateTask(ctx, task, files)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode("Hello World")
