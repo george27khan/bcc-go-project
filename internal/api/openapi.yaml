@@ -1,0 +1,149 @@
+openapi: 3.0.0
+
+info:
+  title: Money Service API
+  version: 1.0.0
+  description: Simple API to create, get and operate on monetary amounts
+servers:
+  - url: http://localhost:8080
+
+paths:
+  /downloads:
+    post:
+      summary: Download files
+      description: Скачивание документов по переданному набору ссылок.
+      requestBody:
+        required: true # тело обязательно
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DownloadsRequest"
+      responses:
+        "201":
+          description: Document created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DownloadsResponse"
+        "400":
+          $ref: '#/components/responses/BadRequest'
+  /downloads/{id}:
+    get:
+      summary: Просмотр статусов
+      description:  Просмотр заявки на скачивание набора файлов.
+      parameters:
+        - name: id
+          in: path
+          description: Уникальный идентификатор заявки на скачивание
+          required: true
+          schema:
+            type: integer
+      responses:
+        "201":
+          description: Document created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DownloadsIdResponse"
+        "400":
+          $ref: '#/components/responses/BadRequest'
+
+#
+#  /downloads/{id}/files/{file_id}:
+#    get:
+
+
+components:
+  schemas:
+    DownloadsRequest:
+      type: object
+      required: [files, timeout]
+      properties:
+        files:
+          type: array
+          description: массив URL для скачивания
+          items:
+            $ref: "#/components/schemas/Url"
+        timeout:
+          type: string
+          pattern: "^[0-9]+s$"
+          description: таймаут в секундах
+
+    UrlString:
+      type: string
+      format: uri #автопроверка формала URL
+      description: URL для скачивания файла
+
+    Url:
+      type: object
+      required:
+        - url
+      properties:
+        url:
+          $ref: "#/components/schemas/UrlString"
+
+    UrlFile:
+      required: [ url, file_id ]
+      properties:
+        url:
+          $ref: "#/components/schemas/UrlString"
+        file_id:
+          type: integer
+    UrlErr:
+      required: [ url, error ]
+      properties:
+        url:
+          $ref: "#/components/schemas/UrlString"
+        error:
+          required: [ code ]
+          type: object
+          properties:
+            code:
+              type: string
+
+    DownloadsResponse:
+      type: object
+      required: [id, status]
+      properties:
+        id:
+          type: integer
+          description: ID заявки, по которому можно опрашивать статус скачивания файлов
+        status:
+          type: string
+          description: начальный статус заявки
+
+    DownloadsIdResponse:
+      type: object
+      required: [id, status, files]
+      properties:
+        id:
+          type: integer
+          description: ID заявки, по которому можно опрашивать статус скачивания файлов
+        status:
+          type: string
+          description: текущий статус заявки
+        files:
+          type: array
+          items:
+            type: object
+            oneOf:
+              - $ref: "#/components/schemas/UrlFile"
+              - $ref: "#/components/schemas/UrlErr"
+    ErrorResponse:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+
+  responses:
+    BadRequest:
+      description: Некорректное тело запроса
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'

@@ -1,0 +1,15 @@
+package: api
+output: internal/api/api.gen.go
+
+generate:
+
+  chi-server: true
+  embedded-spec: true
+  models: true
+  strict-server: true
+
+#  chi-server: true          # генерация chi-сервера
+#  client: false             # не генерируем клиент, если не нужен
+#  types: true               # генерация моделей (структур)
+#  spec: false               # генерация spec-зависимого кода
+#  skip-prune: false         # оставлять все модели из spec
