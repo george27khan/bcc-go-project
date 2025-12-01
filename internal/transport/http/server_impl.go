@@ -1,4 +1,4 @@
-package api
+package http
 
 import (
 	"bcc-go-project/internal/domain/entity"
@@ -13,13 +13,17 @@ import (
 )
 
 type DownloadInitUseCase interface {
-	CreateTask(ctx context.Context, task entity.Task, files []entity.File) (id int, err error)
+	CreateTask(ctx context.Context, task entity.Task, files []entity.File) (id int, status string, err error)
 }
 
 // ServerImpl реализует интерфейс сервера
 type ServerImpl struct {
 	StrictServerInterface // встраиваем базовую реализацию
 	DownloadInit          DownloadInitUseCase
+}
+
+func NewServerImpl(downloadInit DownloadInitUseCase) *ServerImpl {
+	return &ServerImpl{DownloadInit: downloadInit}
 }
 
 func validateURL(u string) error {
@@ -62,48 +66,61 @@ func strToDuration(timeStr string) (time.Duration, error) {
 }
 */
 
-func badRequest(w http.ResponseWriter, code string, err error) {
-	w.WriteHeader(http.StatusBadRequest)
-	json.NewEncoder(w).Encode(ErrorResponse{
-		Code:    code,
-		Message: err.Error(),
-	})
+func PostDownloadsBadRequest(w http.ResponseWriter, code string, message string, err error) {
+	resp := PostDownloads400JSONResponse{
+		BadRequestJSONResponse: BadRequestJSONResponse{
+			Code:    code,
+			Message: fmt.Sprintf("%s: %s", message, err),
+		},
+	}
+	_ = resp.VisitPostDownloadsResponse(w)
+	return
+}
+
+func PostDownloadsServerError(w http.ResponseWriter, code string, message string, err error) {
+	resp := PostDownloads500JSONResponse{
+		InternalServerErrorJSONResponse: InternalServerErrorJSONResponse{
+			Code:    code,
+			Message: fmt.Sprintf("%s: %s", message, err),
+		},
+	}
+	_ = resp.VisitPostDownloadsResponse(w)
+	return
 }
 
 func (s *ServerImpl) PostDownloads(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var reqBody DownloadsRequest
 	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(ErrorResponse{
-			Code:    "",
-			Message: err.Error(),
-		})
+		PostDownloadsBadRequest(w, "REQUEST_BODY_ERROR", "Ошибка декодирования тела запроса", err)
 		return
 	}
 	if err := validate(reqBody); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(ErrorResponse{
-			Code:    "REQUEST_BODY_ERROR",
-			Message: err.Error(),
-		})
+		PostDownloadsBadRequest(w, "REQUEST_BODY_ERROR", "Ошибка валидации параметров", err)
 		return
 	}
 	timeout, err := strToDuration(reqBody.Timeout)
 	if err != nil {
-		badRequest(w, "REQUEST_BODY_ERROR", err)
+		PostDownloadsBadRequest(w, "REQUEST_BODY_ERROR", "Ошибка обработки таймаута", err)
 		return
 	}
 	task := entity.NewTask(timeout)
 	files := make([]entity.File, len(reqBody.Files))
-	for _, file := range reqBody.Files {
-		files = append(files, entity.NewFile(file.Url))
+	for i, file := range reqBody.Files {
+		files[i] = entity.NewFile(file.Url)
 	}
 
-	_, _ = s.DownloadInit.CreateTask(ctx, task, files)
+	taskId, taskStatus, err := s.DownloadInit.CreateTask(ctx, task, files)
+	if err != nil {
+		PostDownloadsServerError(w, "INTERNAL_ERROR", "Ошибка  при создании таска на загрузку", err)
+		return
+	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode("Hello World")
+	resp := PostDownloads201JSONResponse{
+		Id:     taskId,
+		Status: taskStatus,
+	}
+	_ = resp.VisitPostDownloadsResponse(w)
 }
 
 // Реализуем метод конкретного эндпоинта

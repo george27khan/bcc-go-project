@@ -4,7 +4,7 @@ type File struct {
 	Id       int
 	Data     []byte
 	Url      string
-	Error    string
+	Error    error
 	LoaderId int
 }
 

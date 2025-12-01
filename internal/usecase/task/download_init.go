@@ -4,51 +4,65 @@ import (
 	"bcc-go-project/internal/domain/entity"
 	"context"
 	"fmt"
+	"log"
+	"time"
 )
 
-type TaskRepositiry interface {
+type TaskRepository interface {
 	Create(ctx context.Context, task entity.Task) (id int, err error)
 }
-type FileRepositiry interface {
+type FileRepository interface {
 	Create(ctx context.Context, task entity.File) (id int, err error)
 }
 
 type HttpLoader interface {
-	Load(url string) ([]byte, error)
+	Load(ctx context.Context, url string) ([]byte, error)
 }
 
 type DownloadInitUseCase struct {
-	TaskRepositiry TaskRepositiry
-	FileRepositiry FileRepositiry
+	TaskRepository TaskRepository
+	FileRepository FileRepository
 	HttpLoader     HttpLoader
 }
 
-func NewTaskService(taskRepo TaskRepositiry, fileRepo FileRepositiry, httpLoader HttpLoader) *DownloadInitUseCase {
-
+func NewDownloadInitUseCase(taskRepo TaskRepository, fileRepo FileRepository, httpLoader HttpLoader) *DownloadInitUseCase {
 	return &DownloadInitUseCase{
-		TaskRepositiry: taskRepo,
-		FileRepositiry: fileRepo,
+		TaskRepository: taskRepo,
+		FileRepository: fileRepo,
 		HttpLoader:     httpLoader,
 	}
 }
 
-// Create функция создания таска
-func (ts DownloadInitUseCase) CreateTask(ctx context.Context, task entity.Task, files []entity.File) (id int, err error) {
-	id, err = ts.TaskRepositiry.Create(ctx, task) //создаем таск
+// CreateTask функция создания таска
+func (ts DownloadInitUseCase) CreateTask(ctx context.Context, task entity.Task, files []entity.File) (id int, status string, err error) {
+	id, err = ts.TaskRepository.Create(ctx, task) //создаем таск
 	if err != nil {
-		return 0, fmt.Errorf("TaskService.Create error: %w", err)
+		return 0, "", fmt.Errorf("TaskService.Create error: %w", err)
 	}
 
 	// привязываем файлы к таску
 	for _, file := range files {
 		file.LoaderId = id
+		//запускаем скачивание файлов
+		go func() {
+			//таймаут
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second) //тут нужно сделать детач контекст
+			defer cancel()
+			if data, err := ts.HttpLoader.Load(ctx, file.Url); err != nil {
+				file.Error = err
+				log.Printf("Ошибка загрузки файла: %s", err)
+			} else {
+				file.Data = data
+				log.Printf("Файл по ссылке %s загружен", file.Url)
+				// сохраняем скаченные файлы в репозиторий
+				// не понятно как правильно обработать ошибку сохранения если оно асинхронное
+				_, _ = ts.FileRepository.Create(ctx, file)
+
+			}
+		}()
 	}
-
-	//запускаем скачивание файлов
-
-	// сохраняем скаченные файлы в репозиторий
 
 	// отправляем успех
 
-	return id, nil
+	return id, task.Status, nil
 }

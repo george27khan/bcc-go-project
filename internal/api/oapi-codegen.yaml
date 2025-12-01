@@ -1,5 +1,5 @@
-package: api
-output: internal/api/api.gen.go
+package: http
+output: internal/transport/http/server.gen.go
 
 generate:
 

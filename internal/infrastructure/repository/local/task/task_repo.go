@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-var _ task.TaskRepositiry = (*TaskRepository)(nil)
+var _ task.TaskRepository = (*TaskRepository)(nil)
 
 type TaskRepository struct {
 	tasks []entity.Task

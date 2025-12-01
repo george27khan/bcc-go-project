@@ -2,11 +2,12 @@ package file
 
 import (
 	"bcc-go-project/internal/domain/entity"
+	"bcc-go-project/internal/usecase/task"
 	"context"
 	"sync"
 )
 
-//var _ task.FileRepositiry = (*FileRepository)(nil)
+var _ task.FileRepository = (*FileRepository)(nil)
 
 type FileRepository struct {
 	files []entity.File
