@@ -14,7 +14,7 @@ package http
 //)
 //
 //type DownloadInitUseCase interface {
-//	CreateTask(ctx context.Context, task_usecase entity.Task, files []entity.File) (id int, status string, err error)
+//	CreateTask(ctx context.Context, download_init entity.Task, files []entity.File) (id int, status string, err error)
 //}
 //
 //// ServerImpl реализует интерфейс сервера
@@ -105,13 +105,13 @@ package http
 //		PostDownloadsBadRequest(w, "REQUEST_BODY_ERROR", "Ошибка обработки таймаута", err)
 //		return
 //	}
-//	task_usecase := entity.NewTask(timeout)
+//	download_init := entity.NewTask(timeout)
 //	files := make([]entity.File, len(reqBody.Files))
 //	for i, file := range reqBody.Files {
 //		files[i] = entity.NewFile(file.Url)
 //	}
 //
-//	taskId, taskStatus, err := s.DownloadInit.CreateTask(ctx, task_usecase, files)
+//	taskId, taskStatus, err := s.DownloadInit.CreateTask(ctx, download_init, files)
 //	if err != nil {
 //		PostDownloadsServerError(w, "INTERNAL_ERROR", "Ошибка  при создании таска на загрузку", err)
 //		return

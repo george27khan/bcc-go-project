@@ -12,7 +12,7 @@ import (
 )
 
 type DownloadInitUseCase interface {
-	CreateTask(ctx context.Context, task entity.Task, files []entity.File) (id int, status string, err error)
+	CreateTask(ctx context.Context, task entity.Task) (id entity.IdTask, status string, err error)
 }
 
 // StrictServerImpl реализует интерфейс сервера
@@ -104,13 +104,12 @@ func (s *StrictServerImpl) PostDownloads(ctx context.Context, request PostDownlo
 			},
 		}, err
 	}
-	task := entity.NewTask(timeout)
-	files := make([]entity.File, len(request.Body.Files))
-	for i, file := range request.Body.Files {
-		files[i] = entity.NewFile(file.Url)
+	urls := make([]entity.Url, len(request.Body.Files))
+	for i, url := range request.Body.Files {
+		urls[i] = entity.Url(url.Url)
 	}
-
-	taskId, taskStatus, err := s.DownloadInit.CreateTask(ctx, task, files)
+	task := entity.NewTask(timeout, urls)
+	taskId, taskStatus, err := s.DownloadInit.CreateTask(ctx, task)
 	if err != nil {
 		return &PostDownloads500JSONResponse{
 			InternalServerErrorJSONResponse{
@@ -120,7 +119,7 @@ func (s *StrictServerImpl) PostDownloads(ctx context.Context, request PostDownlo
 		}, err
 	}
 	return &PostDownloads201JSONResponse{
-		Id:     taskId,
+		Id:     int(taskId),
 		Status: taskStatus,
 	}, nil
 }
