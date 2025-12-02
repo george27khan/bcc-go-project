@@ -1,18 +1,22 @@
-package task
+package task_usecase
 
 import (
 	"bcc-go-project/internal/domain/entity"
 	"context"
 	"fmt"
 	"log"
+	"sync"
 	"time"
 )
 
 type TaskRepository interface {
 	Create(ctx context.Context, task entity.Task) (id int, err error)
+	UpdateStatus(ctx context.Context, id int, status string) error
 }
 type FileRepository interface {
-	Create(ctx context.Context, task entity.File) (id int, err error)
+	Create(ctx context.Context, file entity.File) (id int, err error)
+	UpdateData(ctx context.Context, id int, data []byte) error
+	UpdateErr(ctx context.Context, id int, err error) error
 }
 
 type HttpLoader interface {
@@ -34,17 +38,20 @@ func NewDownloadInitUseCase(taskRepo TaskRepository, fileRepo FileRepository, ht
 }
 
 // CreateTask функция создания таска
-func (ts DownloadInitUseCase) CreateTask(ctx context.Context, task entity.Task, files []entity.File) (id int, status string, err error) {
-	id, err = ts.TaskRepository.Create(ctx, task) //создаем таск
+func (ts DownloadInitUseCase) CreateTask(ctx context.Context, task entity.Task, files []entity.File) (idTask int, status string, err error) {
+	wg := &sync.WaitGroup{}
+	//создаем таск
+	idTask, err = ts.TaskRepository.Create(ctx, task)
 	if err != nil {
-		return 0, "", fmt.Errorf("TaskService.Create error: %w", err)
+		return 0, "", fmt.Errorf("TaskService.CreateTask error: %w", err)
 	}
 
-	// привязываем файлы к таску
 	for _, file := range files {
-		file.LoaderId = id
+		file.LoaderId = idTask
 		//запускаем скачивание файлов
+		wg.Add(1)
 		go func() {
+			defer wg.Done()
 			//таймаут
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second) //тут нужно сделать детач контекст
 			defer cancel()
@@ -62,7 +69,15 @@ func (ts DownloadInitUseCase) CreateTask(ctx context.Context, task entity.Task, 
 		}()
 	}
 
+	//запускаем процесс следящий за загрузкой для обновления статуса такса
+	go func() {
+		wg.Wait()
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		err = ts.TaskRepository.UpdateStatus(ctx, task.Id, entity.TaskStatusDone)
+	}()
+
 	// отправляем успех
 
-	return id, task.Status, nil
+	return idTask, task.Status, nil
 }

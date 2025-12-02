@@ -4,8 +4,8 @@ info:
   title: Money Service API
   version: 1.0.0
   description: Simple API to create, get and operate on monetary amounts
-servers:
-  - url: http://localhost:8080
+#servers:
+#  - url: http://localhost:8080
 
 paths:
   /downloads:

@@ -2,13 +2,13 @@ package task
 
 import (
 	"bcc-go-project/internal/domain/entity"
-	"bcc-go-project/internal/usecase/task"
+	"bcc-go-project/internal/usecase/task_usecase"
 	"context"
 	"sync"
 	"time"
 )
 
-var _ task.TaskRepository = (*TaskRepository)(nil)
+var _ task_usecase.TaskRepository = (*TaskRepository)(nil)
 
 type TaskRepository struct {
 	tasks []entity.Task
@@ -32,4 +32,12 @@ func (r *TaskRepository) Create(ctx context.Context, task entity.Task) (id int, 
 	task.Created = time.Now()
 	r.id++ // сдвигаем счетчик
 	return task.Id, nil
+}
+
+// Create создание таски в локальном хранилище
+func (r *TaskRepository) UpdateStatus(ctx context.Context, id int, status string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.tasks[id].Status = status // пишем новую таску
+	return nil
 }
