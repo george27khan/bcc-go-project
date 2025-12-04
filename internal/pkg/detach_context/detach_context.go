@@ -25,7 +25,7 @@ func (c MyDetachContext) Err() error {
 	return nil
 }
 func (c MyDetachContext) Value(key any) any {
-	return c.Value(key)
+	return c.ctx.Value(key)
 }
 
 func DetachContext(ctx context.Context) context.Context {

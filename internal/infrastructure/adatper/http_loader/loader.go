@@ -5,28 +5,34 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 )
 
-type HttpLoader struct {
+type HttpClient interface {
+	Do(req *http.Request) (*http.Response, error)
 }
 
-func NewHttpLoader() *HttpLoader {
-	return &HttpLoader{}
+type HttpLoader struct {
+	client HttpClient
+}
+
+func NewHttpLoader(client HttpClient) *HttpLoader {
+	return &HttpLoader{client: client}
 }
 
 func (l *HttpLoader) Load(ctx context.Context, url entity.Url) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, string(url), nil)
-
 	if err != nil {
 		return nil, fmt.Errorf("HttpLoader.Load error: %w", err)
 	}
-	log.Printf("контекст: %v", ctx.Err())
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := l.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("HttpLoader.Load error: %w", err)
 	}
 	defer resp.Body.Close()
-	return io.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("HttpLoader.Load error: %w", err)
+	}
+	return data, nil
 }

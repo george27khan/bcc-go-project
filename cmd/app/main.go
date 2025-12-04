@@ -22,10 +22,9 @@ func main() {
 	// Middleware проверки запросов
 
 	r.Use(middleware.OapiRequestValidator(spec))
-	fRep := file_rep.NewFileRepository()
 	tRep := file_rep.NewTaskRepository()
-	loader := http_loader.NewHttpLoader()
-	taskUseCase := usecase.NewTaskUseCase(tRep, fRep, loader)
+	loader := http_loader.NewHttpLoader(&http.Client{})
+	taskUseCase := usecase.NewTaskUseCase(tRep, loader)
 	srv := oapi_srv.NewStrictServerImpl(taskUseCase)
 
 	// Регистрируем все эндпоинты из OpenAPI

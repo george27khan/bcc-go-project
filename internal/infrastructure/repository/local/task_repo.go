@@ -2,23 +2,25 @@ package local
 
 import (
 	"bcc-go-project/internal/domain/entity"
-	"bcc-go-project/internal/infrastructure/repository/local/dto"
+	"bcc-go-project/internal/infrastructure/repository/errors"
 	"bcc-go-project/internal/usecase"
 	"context"
+	"fmt"
 	"sync"
 )
 
 var _ usecase.TaskRepository = (*TaskRepository)(nil)
 
 type TaskRepository struct {
-	tasks []dto.Task
-	mu    *sync.RWMutex
-	id    entity.IdTask
+	tasks  map[entity.IdTask]entity.Task
+	mu     *sync.RWMutex
+	idTask entity.IdTask
+	idFile entity.IdFile
 }
 
 func NewTaskRepository() *TaskRepository {
 	return &TaskRepository{
-		tasks: make([]dto.Task, 0),
+		tasks: make(map[entity.IdTask]entity.Task, 100),
 		mu:    &sync.RWMutex{},
 	}
 }
@@ -28,16 +30,15 @@ func (r *TaskRepository) Create(ctx context.Context, task entity.Task) (id entit
 	// завершение операции по контексту
 	select {
 	case <-ctx.Done():
-		return 0, ctx.Err()
+		return 0, fmt.Errorf("TaskRepository.Create: %w", ctx.Err())
 	default:
 	}
-	taskRepo := dto.ToTaskRepo(task)
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.tasks = append(r.tasks, *taskRepo) // пишем новую таску
-	taskRepo.Id = r.id                   //выдем таску ID
-	r.id++                               // сдвигаем счетчик
-	return taskRepo.Id, nil
+	task.Id = r.idTask
+	r.tasks[r.idTask] = task // пишем новую таску
+	r.idTask++               // сдвигаем счетчик
+	return task.Id, nil
 }
 
 // UpdateStatus обновление статуса таска
@@ -45,12 +46,17 @@ func (r *TaskRepository) UpdateStatus(ctx context.Context, id entity.IdTask, sta
 	// завершение операции по контексту
 	select {
 	case <-ctx.Done():
-		return ctx.Err()
+		return fmt.Errorf("TaskRepository.UpdateStatus: %w", ctx.Err())
 	default:
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.tasks[id].Status = status // пишем новую таску
+	if task, ok := r.tasks[id]; !ok {
+		return fmt.Errorf("TaskRepository.UpdateStatus: %w", errors.ErrTaskNotExist)
+	} else {
+		task.Status = status
+		r.tasks[id] = task // обновляем таску
+	}
 	return nil
 }
 
@@ -59,12 +65,86 @@ func (r *TaskRepository) Get(ctx context.Context, id entity.IdTask) (*entity.Tas
 	// завершение операции по контексту
 	select {
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		return nil, fmt.Errorf("TaskRepository.Get: %w", ctx.Err())
 	default:
 	}
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	taskRepo := r.tasks[id] // пишем новую таску
-	task := dto.ToTaskDomain(taskRepo)
-	return task, nil
+	if task, ok := r.tasks[id]; !ok {
+		return nil, fmt.Errorf("TaskRepository.Get: %w", errors.ErrTaskNotExist)
+	} else {
+		return &task, nil
+	}
+}
+
+// UpdateFileData
+func (r *TaskRepository) UpdateFileData(ctx context.Context, id entity.IdTask, url entity.Url, data []byte) error {
+	// завершение операции по контексту
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("TaskRepository.UpdateFileData: %w", ctx.Err())
+	default:
+	}
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	if task, ok := r.tasks[id]; !ok {
+		return fmt.Errorf("TaskRepository.UpdateFileData: %w", errors.ErrTaskNotExist)
+	} else {
+		for i, file := range task.Files {
+			if file.Url == url { // допускаем что url в рамках таска уникальные
+				task.Files[i].Data = data
+				task.Files[i].Id = r.idFile
+				r.idFile++
+				r.tasks[id] = task
+				return nil
+			}
+		}
+	}
+	return fmt.Errorf("TaskRepository.UpdateFileData: %w", errors.ErrFileNotExist)
+}
+
+// UpdateFileErr
+func (r *TaskRepository) UpdateFileErr(ctx context.Context, id entity.IdTask, url entity.Url, fileErr error) error {
+	// завершение операции по контексту
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("TaskRepository.UpdateFileErr: %w", ctx.Err())
+	default:
+	}
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	if task, ok := r.tasks[id]; !ok {
+		return fmt.Errorf("TaskRepository.UpdateFileErr: %w", errors.ErrTaskNotExist)
+	} else {
+		for i, file := range task.Files {
+			if file.Url == url { // допускаем что url в рамках таска уникальные
+				task.Files[i].Error = fileErr
+				r.tasks[id] = task
+				return nil
+			}
+		}
+	}
+	return fmt.Errorf("TaskRepository.UpdateFileErr: %w", errors.ErrFileNotExist)
+}
+
+// GetTaskFile
+func (r *TaskRepository) GetTaskFile(ctx context.Context, idTask entity.IdTask, idFile entity.IdFile) ([]byte, error) {
+	// завершение операции по контексту
+	select {
+	case <-ctx.Done():
+		return []byte{}, fmt.Errorf("TaskRepository.GetTaskFile: %w", ctx.Err())
+	default:
+	}
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	if task, ok := r.tasks[idTask]; !ok {
+		return []byte{}, fmt.Errorf("TaskRepository.GetTaskFile: %w", errors.ErrTaskNotExist)
+	} else {
+		for _, file := range task.Files {
+			if file.Id == idFile {
+			}
+			return file.Data, nil
+		}
+	}
+	return []byte{}, fmt.Errorf("TaskRepository.GetTaskFile: %w", errors.ErrFileNotExist)
 }

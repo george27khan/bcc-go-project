@@ -1,5 +1,5 @@
 package: http
-output: internal/transport/http/server.gen.go
+output: ../oapi.server.gen.go
 
 generate:
 

@@ -9,11 +9,9 @@ type TaskRepository interface {
 	Create(ctx context.Context, task entity.Task) (id entity.IdTask, err error)
 	Get(ctx context.Context, id entity.IdTask) (*entity.Task, error)
 	UpdateStatus(ctx context.Context, id entity.IdTask, status string) error
-}
-type FileRepository interface {
-	Create(ctx context.Context, file entity.File, idTask entity.IdTask) (id entity.IdFile, err error)
-	UpdateData(ctx context.Context, id entity.IdFile, data []byte) error
-	UpdateErr(ctx context.Context, id entity.IdFile, err error) error
+	UpdateFileData(ctx context.Context, id entity.IdTask, url entity.Url, data []byte) error
+	UpdateFileErr(ctx context.Context, id entity.IdTask, url entity.Url, fileErr error) error
+	GetTaskFile(ctx context.Context, idTask entity.IdTask, idFile entity.IdFile) ([]byte, error)
 }
 
 type HttpLoader interface {
@@ -22,14 +20,12 @@ type HttpLoader interface {
 
 type TaskUseCase struct {
 	TaskRepository TaskRepository
-	FileRepository FileRepository
 	HttpLoader     HttpLoader
 }
 
-func NewTaskUseCase(taskRepo TaskRepository, fileRepo FileRepository, httpLoader HttpLoader) *TaskUseCase {
+func NewTaskUseCase(taskRepo TaskRepository, httpLoader HttpLoader) *TaskUseCase {
 	return &TaskUseCase{
 		TaskRepository: taskRepo,
-		FileRepository: fileRepo,
 		HttpLoader:     httpLoader,
 	}
 }
