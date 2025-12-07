@@ -13,19 +13,34 @@ import (
 	"time"
 )
 
-type TaskUseCase interface {
-	CreateTask(ctx context.Context, task entity.Task) (id entity.IdTask, status string, err error)
+var statusMapping = map[entity.Status]TaskStatus{
+	entity.TaskStatusProcess: PROCESS,
+	entity.TaskStatusDone:    DONE,
+}
+
+type TaskCreateUseCase interface {
+	CreateTask(ctx context.Context, task entity.Task) (id entity.IdTask, status entity.Status, err error)
+}
+type TaskGetUseCase interface {
 	GetTask(ctx context.Context, id entity.IdTask) (*entity.Task, error)
+}
+type TaskFileUseCase interface {
 	GetTaskFile(ctx context.Context, idTask entity.IdTask, idFile entity.IdFile) ([]byte, error)
 }
 
-// StrictServerImpl реализует интерфейс сервера
-type StrictServerImpl struct {
-	TaskUseCase TaskUseCase
+// TaskServer реализует интерфейс сервера
+type TaskServer struct {
+	TaskCreateUseCase TaskCreateUseCase
+	TaskGetUseCase    TaskGetUseCase
+	TaskFileUseCase   TaskFileUseCase
 }
 
-func NewStrictServerImpl(taskUseCase TaskUseCase) *StrictServerImpl {
-	return &StrictServerImpl{TaskUseCase: taskUseCase}
+func NewTaskServer(taskCreateUseCase TaskCreateUseCase, taskGetUseCase TaskGetUseCase, taskFileUseCase TaskFileUseCase) *TaskServer {
+	return &TaskServer{
+		TaskCreateUseCase: taskCreateUseCase,
+		TaskGetUseCase:    taskGetUseCase,
+		TaskFileUseCase:   taskFileUseCase,
+	}
 }
 
 func validateURL(u string) error {
@@ -67,30 +82,7 @@ func strToDuration(timeStr string) (time.Duration, error) {
 "timeout": "60s"
 }
 */
-
-//func PostDownloadsBadRequest(w http.ResponseWriter, code string, message string, err error) {
-//	resp := PostDownloads400JSONResponse{
-//		BadRequest400JSONResponse: BadRequest400JSONResponse{
-//			Code:    code,
-//			Message: fmt.Sprintf("%s: %s", message, err),
-//		},
-//	}
-//	_ = resp.VisitPostDownloadsResponse(w)
-//	return
-//}
-//
-//func PostDownloadsServerError(w http.ResponseWriter, code string, message string, err error) {
-//	resp := PostDownloads500JSONResponse{
-//		InternalServerError500JSONResponse: InternalServerError500JSONResponse{
-//			Code:    code,
-//			Message: fmt.Sprintf("%s: %s", message, err),
-//		},
-//	}
-//	_ = resp.VisitPostDownloadsResponse(w)
-//	return
-//}
-
-func (s *StrictServerImpl) PostDownloads(ctx context.Context, request PostDownloadsRequestObject) (PostDownloadsResponseObject, error) {
+func (s *TaskServer) PostDownloads(ctx context.Context, request PostDownloadsRequestObject) (PostDownloadsResponseObject, error) {
 	if err := validate(request.Body); err != nil {
 		return &PostDownloads400JSONResponse{
 			BadRequest400JSONResponse{
@@ -109,11 +101,11 @@ func (s *StrictServerImpl) PostDownloads(ctx context.Context, request PostDownlo
 		}, err
 	}
 	urls := make([]entity.Url, len(request.Body.Files))
-	for i, url := range request.Body.Files {
-		urls[i] = entity.Url(url.Url)
+	for i, urlTask := range request.Body.Files {
+		urls[i] = entity.Url(urlTask.Url)
 	}
 	task := entity.NewTask(timeout, urls)
-	taskId, taskStatus, err := s.TaskUseCase.CreateTask(ctx, task)
+	taskId, taskStatus, err := s.TaskCreateUseCase.CreateTask(ctx, task)
 	if err != nil {
 		return &PostDownloads500JSONResponse{
 			InternalServerError500JSONResponse{
@@ -124,13 +116,13 @@ func (s *StrictServerImpl) PostDownloads(ctx context.Context, request PostDownlo
 	}
 	return &PostDownloads201JSONResponse{
 		Id:     int(taskId),
-		Status: taskStatus,
+		Status: statusMapping[taskStatus],
 	}, nil
 }
 
-// GetDownloadsId
-func (s *StrictServerImpl) GetDownloadsId(ctx context.Context, request GetDownloadsIdRequestObject) (GetDownloadsIdResponseObject, error) {
-	task, err := s.TaskUseCase.GetTask(ctx, entity.IdTask(request.Id))
+// GetDownloadsId получение таска
+func (s *TaskServer) GetDownloadsId(ctx context.Context, request GetDownloadsIdRequestObject) (GetDownloadsIdResponseObject, error) {
+	task, err := s.TaskGetUseCase.GetTask(ctx, entity.IdTask(request.Id))
 	if err != nil {
 		if errors.Is(err, rep_err.ErrTaskNotExist) {
 			return GetDownloadsId404JSONResponse{NotFound404JSONResponse{
@@ -162,15 +154,14 @@ func (s *StrictServerImpl) GetDownloadsId(ctx context.Context, request GetDownlo
 	return GetDownloadsId200JSONResponse{
 		Files:  files,
 		Id:     int(task.Id),
-		Status: task.Status,
+		Status: statusMapping[task.Status],
 	}, nil
 }
 
 // GetDownloadsIdFilesFileId
 // /downloads/0/files/0
-func (s *StrictServerImpl) GetDownloadsIdFilesFileId(ctx context.Context, request GetDownloadsIdFilesFileIdRequestObject) (GetDownloadsIdFilesFileIdResponseObject, error) {
-
-	data, err := s.TaskUseCase.GetTaskFile(ctx, entity.IdTask(request.Id), entity.IdFile(request.FileId))
+func (s *TaskServer) GetDownloadsIdFilesFileId(ctx context.Context, request GetDownloadsIdFilesFileIdRequestObject) (GetDownloadsIdFilesFileIdResponseObject, error) {
+	data, err := s.TaskFileUseCase.GetTaskFile(ctx, entity.IdTask(request.Id), entity.IdFile(request.FileId))
 	if err != nil {
 		if errors.Is(err, rep_err.ErrTaskNotExist) || errors.Is(err, rep_err.ErrFileNotExist) {
 			return GetDownloadsIdFilesFileId404JSONResponse{NotFound404JSONResponse{

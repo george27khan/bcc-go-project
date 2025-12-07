@@ -3,18 +3,21 @@ package entity
 import "time"
 
 const (
-	TaskStatusProcess = "PROCESS"
-	TaskStatusDone    = "DONE"
+	TaskStatusProcess Status = "PROCESS"
+	TaskStatusDone    Status = "DONE"
 )
 
-type IdTask int
+type (
+	IdTask int
+)
 type IdFile int
 type Url string
+type Status string
 
 type Task struct {
 	Id      IdTask
 	Timeout time.Duration
-	Status  string
+	Status  Status
 	Files   []File
 }
 
@@ -25,6 +28,7 @@ type File struct {
 	Error error
 }
 
+// NewTask
 func NewTask(timeout time.Duration, urls []Url) Task {
 	files := make([]File, len(urls))
 	for i, url := range urls {

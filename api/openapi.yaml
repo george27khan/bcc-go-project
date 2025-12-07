@@ -4,8 +4,8 @@ info:
   title: Money Service API
   version: 1.0.0
   description: Simple API to create, get and operate on monetary amounts
-#servers:
-#  - url: http://localhost:8080
+servers:
+  - url: http://localhost:8080
 
 paths:
   /downloads:
@@ -18,6 +18,8 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/DownloadsRequest"
+            example:
+              $ref: "#/components/examples/InitTaskReq"
       responses:
         "201":
           description: Document created
@@ -25,6 +27,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DownloadsResponse"
+              example:
+                $ref: "#/components/examples/InitTaskResp"
         "400":
           $ref: '#/components/responses/BadRequest400'
         "500":
@@ -34,7 +38,7 @@ paths:
       summary: Просмотр статусов
       description:  Просмотр заявки на скачивание набора файлов.
       parameters:
-        - $ref: "#/components/parameters/IdTask"
+        - $ref: "#/components/parameters/IdTaskPar"
       responses:
         "200":
           description: success
@@ -54,8 +58,8 @@ paths:
       summary: Скачивание файла
       description: Скачивание файла по ID таска и ID файла
       parameters:
-        - $ref: "#/components/parameters/IdTask"
-        - $ref: "#/components/parameters/IdFile"
+        - $ref: "#/components/parameters/IdTaskPar"
+        - $ref: "#/components/parameters/IdFilePar"
       responses:
         "200":
           description: success
@@ -71,13 +75,50 @@ paths:
           $ref: '#/components/responses/InternalServerError500'
 
 
-#
-#  /downloads/{id}/files/{file_id}:
-#    get:
-
-
 components:
   schemas:
+    UrlString:
+      type: string
+      format: uri #автопроверка формала URL
+      description: URL для скачивания файла
+
+    Url:
+      type: object
+      required:
+        - url
+      properties:
+        url:
+          $ref: "#/components/schemas/UrlString"
+
+    IdTask:
+      type: integer
+      description: ID заявки, по которому можно опрашивать статус скачивания файлов
+
+    TaskStatus:
+      type: string
+      description: Статус заявки
+      enum: [ PROCESS, DONE ]
+
+    UrlFile:
+      required: [ url, file_id ]
+      properties:
+        url:
+          $ref: "#/components/schemas/UrlString"
+        file_id:
+          type: integer
+
+    UrlErr:
+      required: [ url, error ]
+      properties:
+        url:
+          $ref: "#/components/schemas/UrlString"
+        error:
+          required: [ code ]
+          type: object
+          properties:
+            code:
+              type: string
+
     DownloadsRequest:
       type: object
       required: [files, timeout]
@@ -92,59 +133,23 @@ components:
           pattern: "^[0-9]+s$"
           description: таймаут в секундах
 
-    UrlString:
-      type: string
-      format: uri #автопроверка формала URL
-      description: URL для скачивания файла
-
-    Url:
-      type: object
-      required:
-        - url
-      properties:
-        url:
-          $ref: "#/components/schemas/UrlString"
-
-    UrlFile:
-      required: [ url, file_id ]
-      properties:
-        url:
-          $ref: "#/components/schemas/UrlString"
-        file_id:
-          type: integer
-    UrlErr:
-      required: [ url, error ]
-      properties:
-        url:
-          $ref: "#/components/schemas/UrlString"
-        error:
-          required: [ code ]
-          type: object
-          properties:
-            code:
-              type: string
-
     DownloadsResponse:
       type: object
       required: [id, status]
       properties:
         id:
-          type: integer
-          description: ID заявки, по которому можно опрашивать статус скачивания файлов
+          $ref: "#/components/schemas/IdTask"
         status:
-          type: string
-          description: начальный статус заявки
+          $ref: "#/components/schemas/TaskStatus"
 
     DownloadsIdResponse:
       type: object
       required: [id, status, files]
       properties:
         id:
-          type: integer
-          description: ID заявки, по которому можно опрашивать статус скачивания файлов
+          $ref: "#/components/schemas/IdTask"
         status:
-          type: string
-          description: текущий статус заявки
+          $ref: "#/components/schemas/TaskStatus"
         files:
           type: array
           items:
@@ -167,16 +172,34 @@ components:
       description: Код ошибки для файла
       enum: [ timeout, not_found, forbidden, bad_request, internal_server_error]
 
+  examples:
+    InitTaskReq:
+      summary: Start task example
+      value:
+        files:
+          - url: "https://google.com"
+          - url: "https://somehost.com/test.pdf"
+        timeout: "60s"
+    InitTaskResp:
+      summary: Start task example
+      value:
+        id: "0"
+        status: "60s"
+    CompletedTask:
+      summary: Completed task example
+      value:
+        id: 1
+        status: "completed"
 
   parameters:
-    IdTask:
+    IdTaskPar:
       name: id
       in: path
       description: Уникальный идентификатор заявки на скачивание
       required: true
       schema:
         type: integer
-    IdFile:
+    IdFilePar:
       name: file_id
       in: path
       description: Уникальный идентификатор заявки на скачивание

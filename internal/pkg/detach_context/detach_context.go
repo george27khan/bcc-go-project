@@ -2,7 +2,6 @@ package detach_context
 
 import (
 	"context"
-	"fmt"
 	"time"
 )
 
@@ -31,30 +30,3 @@ func (c MyDetachContext) Value(key any) any {
 func DetachContext(ctx context.Context) context.Context {
 	return MyDetachContext{ctx: ctx}
 }
-
-func someFuncWithContext(ctx context.Context) error {
-	if ctx.Err() != nil {
-		return ctx.Err()
-	}
-	fmt.Println("someFuncWithContext done!")
-	return nil
-}
-
-//func main() {
-//	ctx := context.WithValue(context.Background(), "key1", "value1")
-//	ctx = context.WithValue(ctx, "key2", "value2")
-//	//ctx, cancel := context.WithCancel(ctx)
-//	//ctx, _ = context.WithDeadline(ctx, time.Now().Add(time.Second))
-//	ctx, _ = context.WithTimeout(ctx, time.Second)
-//
-//	defer func() {
-//		dctx := DetachContext(ctx)
-//		dctx, cancel := context.WithTimeout(ctx, 2*time.Second)
-//		defer cancel()
-//		if err := someFuncWithContext(dctx); err != nil {
-//			fmt.Println("someFuncWithContext not work")
-//		}
-//	}()
-//	time.Sleep(2 * time.Second)
-//	fmt.Println("ctx ", ctx.Err())
-//}

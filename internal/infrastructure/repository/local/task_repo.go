@@ -9,7 +9,11 @@ import (
 	"sync"
 )
 
-var _ usecase.TaskRepository = (*TaskRepository)(nil)
+var (
+	_ usecase.CreateTaskRepository = (*TaskRepository)(nil)
+	_ usecase.GetTaskRepository    = (*TaskRepository)(nil)
+	_ usecase.TaskFileRepository   = (*TaskRepository)(nil)
+)
 
 type TaskRepository struct {
 	tasks  map[entity.IdTask]entity.Task
@@ -42,7 +46,7 @@ func (r *TaskRepository) Create(ctx context.Context, task entity.Task) (id entit
 }
 
 // UpdateStatus обновление статуса таска
-func (r *TaskRepository) UpdateStatus(ctx context.Context, id entity.IdTask, status string) error {
+func (r *TaskRepository) UpdateStatus(ctx context.Context, id entity.IdTask, status entity.Status) error {
 	// завершение операции по контексту
 	select {
 	case <-ctx.Done():
@@ -77,7 +81,7 @@ func (r *TaskRepository) Get(ctx context.Context, id entity.IdTask) (*entity.Tas
 	}
 }
 
-// UpdateFileData
+// UpdateFileData обновление данных
 func (r *TaskRepository) UpdateFileData(ctx context.Context, id entity.IdTask, url entity.Url, data []byte) error {
 	// завершение операции по контексту
 	select {
@@ -103,7 +107,7 @@ func (r *TaskRepository) UpdateFileData(ctx context.Context, id entity.IdTask, u
 	return fmt.Errorf("TaskRepository.UpdateFileData: %w", errors.ErrFileNotExist)
 }
 
-// UpdateFileErr
+// UpdateFileErr обновление ошибки
 func (r *TaskRepository) UpdateFileErr(ctx context.Context, id entity.IdTask, url entity.Url, fileErr error) error {
 	// завершение операции по контексту
 	select {
@@ -127,7 +131,7 @@ func (r *TaskRepository) UpdateFileErr(ctx context.Context, id entity.IdTask, ur
 	return fmt.Errorf("TaskRepository.UpdateFileErr: %w", errors.ErrFileNotExist)
 }
 
-// GetTaskFile
+// GetTaskFile получение файла
 func (r *TaskRepository) GetTaskFile(ctx context.Context, idTask entity.IdTask, idFile entity.IdFile) ([]byte, error) {
 	// завершение операции по контексту
 	select {
