@@ -2,32 +2,38 @@ package http
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 )
 
-func SwaggerErrorHandlerFunc(w http.ResponseWriter, message string, statusCode int) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(http.StatusBadRequest)
-	json.NewEncoder(w).Encode(ErrorResponse{
-		Code:    "test",
+func EncodeResponse(w http.ResponseWriter, message string, statusCode int, errCode ErrorCode) {
+	w.WriteHeader(statusCode)
+	err := json.NewEncoder(w).Encode(ErrorResponse{
+		Code:    errCode,
 		Message: message,
 	})
+	if err != nil {
+		log.Println("EncodeResponse error: %w", err)
+	}
+}
+
+func SwaggerErrorHandlerFunc(w http.ResponseWriter, message string, statusCode int) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+	if statusCode == http.StatusBadRequest {
+		EncodeResponse(w, message, statusCode, BadRequest)
+		return
+	}
+	EncodeResponse(w, message, http.StatusInternalServerError, InternalServerError)
+	return
 }
 
 func RequestErrorHandlerFunc(w http.ResponseWriter, r *http.Request, err error) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(http.StatusBadRequest)
-	_ = json.NewEncoder(w).Encode(ErrorResponse{
-		Code:    "test1",
-		Message: err.Error(),
-	})
+	EncodeResponse(w, err.Error(), http.StatusBadRequest, BadRequest)
 }
 
 func ResponseErrorHandlerFunc(w http.ResponseWriter, r *http.Request, err error) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(http.StatusInternalServerError)
-	_ = json.NewEncoder(w).Encode(ErrorResponse{
-		Code:    "test",
-		Message: err.Error(),
-	})
+	EncodeResponse(w, err.Error(), http.StatusInternalServerError, BadRequest)
 }

@@ -83,6 +83,9 @@ func strToDuration(timeStr string) (time.Duration, error) {
 }
 */
 func (s *TaskServer) PostDownloads(ctx context.Context, request PostDownloadsRequestObject) (PostDownloadsResponseObject, error) {
+	if ctx.Err() != nil {
+		return nil, fmt.Errorf("PostDownloads: %w", ctx.Err())
+	}
 	if err := validate(request.Body); err != nil {
 		return &PostDownloads400JSONResponse{
 			BadRequest400JSONResponse{
@@ -122,6 +125,9 @@ func (s *TaskServer) PostDownloads(ctx context.Context, request PostDownloadsReq
 
 // GetDownloadsId получение таска
 func (s *TaskServer) GetDownloadsId(ctx context.Context, request GetDownloadsIdRequestObject) (GetDownloadsIdResponseObject, error) {
+	if ctx.Err() != nil {
+		return nil, fmt.Errorf("PostDownloads: %w", ctx.Err())
+	}
 	task, err := s.TaskGetUseCase.GetTask(ctx, entity.IdTask(request.Id))
 	if err != nil {
 		if errors.Is(err, rep_err.ErrTaskNotExist) {
@@ -161,6 +167,9 @@ func (s *TaskServer) GetDownloadsId(ctx context.Context, request GetDownloadsIdR
 // GetDownloadsIdFilesFileId
 // /downloads/0/files/0
 func (s *TaskServer) GetDownloadsIdFilesFileId(ctx context.Context, request GetDownloadsIdFilesFileIdRequestObject) (GetDownloadsIdFilesFileIdResponseObject, error) {
+	if ctx.Err() != nil {
+		return nil, fmt.Errorf("PostDownloads: %w", ctx.Err())
+	}
 	data, err := s.TaskFileUseCase.GetTaskFile(ctx, entity.IdTask(request.Id), entity.IdFile(request.FileId))
 	if err != nil {
 		if errors.Is(err, rep_err.ErrTaskNotExist) || errors.Is(err, rep_err.ErrFileNotExist) {

@@ -5,7 +5,7 @@ import (
 	file_rep "bcc-go-project/internal/infrastructure/repository/local"
 	oapi_srv "bcc-go-project/internal/transport/http"
 	middlewares "bcc-go-project/internal/transport/http/middlewares"
-	"bcc-go-project/internal/usecase"
+	"bcc-go-project/internal/usecase/task"
 	"github.com/getkin/kin-openapi/openapi3filter"
 	chi "github.com/go-chi/chi/v5"
 	middleware "github.com/oapi-codegen/nethttp-middleware"
@@ -32,9 +32,9 @@ func main() {
 	))
 	taskRep := file_rep.NewTaskRepository()
 	loader := http_loader.NewHttpLoader(&http.Client{})
-	taskCreateUseCase := usecase.NewCreateTaskUseCase(taskRep, loader)
-	taskGetUseCase := usecase.NewGetTaskUseCase(taskRep)
-	taskFileUseCase := usecase.NewTaskFileUseCase(taskRep)
+	taskCreateUseCase := task.NewCreateTaskUseCase(taskRep, loader)
+	taskGetUseCase := task.NewGetTaskUseCase(taskRep)
+	taskFileUseCase := task.NewTaskFileUseCase(taskRep)
 	srv := oapi_srv.NewTaskServer(taskCreateUseCase, taskGetUseCase, taskFileUseCase)
 
 	// Регистрируем все эндпоинты из OpenAPI

@@ -3,16 +3,16 @@ package local
 import (
 	"bcc-go-project/internal/domain/entity"
 	"bcc-go-project/internal/infrastructure/repository/errors"
-	"bcc-go-project/internal/usecase"
+	"bcc-go-project/internal/usecase/task"
 	"context"
 	"fmt"
 	"sync"
 )
 
 var (
-	_ usecase.CreateTaskRepository = (*TaskRepository)(nil)
-	_ usecase.GetTaskRepository    = (*TaskRepository)(nil)
-	_ usecase.TaskFileRepository   = (*TaskRepository)(nil)
+	_ task.CreateTaskRepository = (*TaskRepository)(nil)
+	_ task.GetTaskRepository    = (*TaskRepository)(nil)
+	_ task.TaskFileRepository   = (*TaskRepository)(nil)
 )
 
 type TaskRepository struct {

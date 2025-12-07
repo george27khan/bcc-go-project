@@ -1,4 +1,4 @@
-package usecase
+package task
 
 import (
 	"bcc-go-project/internal/domain/entity"
@@ -10,6 +10,7 @@ import (
 	"time"
 )
 
+//go:generate mockgen -package task -source=create_task.go -destination=mock_create_task.go
 type CreateTaskRepository interface {
 	Create(ctx context.Context, task entity.Task) (id entity.IdTask, err error)
 	UpdateStatus(ctx context.Context, id entity.IdTask, status entity.Status) error

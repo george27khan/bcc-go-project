@@ -1,4 +1,4 @@
-package usecase
+package task
 
 import (
 	"bcc-go-project/internal/domain/entity"
@@ -7,6 +7,7 @@ import (
 	"time"
 )
 
+//go:generate mockgen -package task -source=get_task_file.go -destination=mock_get_task_file.go
 type TaskFileRepository interface {
 	GetTaskFile(ctx context.Context, idTask entity.IdTask, idFile entity.IdFile) ([]byte, error)
 }
