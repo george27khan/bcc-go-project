@@ -2,7 +2,7 @@ package local
 
 import (
 	"bcc-go-project/internal/domain/entity"
-	"bcc-go-project/internal/infrastructure/repository/errors"
+	"bcc-go-project/internal/infrastructure/repository/errors_repo"
 	"bcc-go-project/internal/usecase/task"
 	"context"
 	"fmt"
@@ -56,7 +56,7 @@ func (r *TaskRepository) UpdateStatus(ctx context.Context, id entity.IdTask, sta
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if task, ok := r.tasks[id]; !ok {
-		return fmt.Errorf("TaskRepository.UpdateStatus: %w", errors.ErrTaskNotExist)
+		return fmt.Errorf("TaskRepository.UpdateStatus: %w", errors_repo.ErrTaskNotExist)
 	} else {
 		task.Status = status
 		r.tasks[id] = task // обновляем таску
@@ -75,7 +75,7 @@ func (r *TaskRepository) Get(ctx context.Context, id entity.IdTask) (*entity.Tas
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	if task, ok := r.tasks[id]; !ok {
-		return nil, fmt.Errorf("TaskRepository.Get: %w", errors.ErrTaskNotExist)
+		return nil, fmt.Errorf("TaskRepository.Get: %w", errors_repo.ErrTaskNotExist)
 	} else {
 		return &task, nil
 	}
@@ -92,7 +92,7 @@ func (r *TaskRepository) UpdateFileData(ctx context.Context, id entity.IdTask, u
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	if task, ok := r.tasks[id]; !ok {
-		return fmt.Errorf("TaskRepository.UpdateFileData: %w", errors.ErrTaskNotExist)
+		return fmt.Errorf("TaskRepository.UpdateFileData: %w", errors_repo.ErrTaskNotExist)
 	} else {
 		for i, file := range task.Files {
 			if file.Url == url { // допускаем что url в рамках таска уникальные
@@ -104,7 +104,7 @@ func (r *TaskRepository) UpdateFileData(ctx context.Context, id entity.IdTask, u
 			}
 		}
 	}
-	return fmt.Errorf("TaskRepository.UpdateFileData: %w", errors.ErrFileNotExist)
+	return fmt.Errorf("TaskRepository.UpdateFileData: %w", errors_repo.ErrFileNotExist)
 }
 
 // UpdateFileErr обновление ошибки
@@ -118,7 +118,7 @@ func (r *TaskRepository) UpdateFileErr(ctx context.Context, id entity.IdTask, ur
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	if task, ok := r.tasks[id]; !ok {
-		return fmt.Errorf("TaskRepository.UpdateFileErr: %w", errors.ErrTaskNotExist)
+		return fmt.Errorf("TaskRepository.UpdateFileErr: %w", errors_repo.ErrTaskNotExist)
 	} else {
 		for i, file := range task.Files {
 			if file.Url == url { // допускаем что url в рамках таска уникальные
@@ -128,7 +128,7 @@ func (r *TaskRepository) UpdateFileErr(ctx context.Context, id entity.IdTask, ur
 			}
 		}
 	}
-	return fmt.Errorf("TaskRepository.UpdateFileErr: %w", errors.ErrFileNotExist)
+	return fmt.Errorf("TaskRepository.UpdateFileErr: %w", errors_repo.ErrFileNotExist)
 }
 
 // GetTaskFile получение файла
@@ -142,7 +142,7 @@ func (r *TaskRepository) GetTaskFile(ctx context.Context, idTask entity.IdTask, 
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	if task, ok := r.tasks[idTask]; !ok {
-		return []byte{}, fmt.Errorf("TaskRepository.GetTaskFile: %w", errors.ErrTaskNotExist)
+		return []byte{}, fmt.Errorf("TaskRepository.GetTaskFile: %w", errors_repo.ErrTaskNotExist)
 	} else {
 		for _, file := range task.Files {
 			if file.Id == idFile {
@@ -150,5 +150,5 @@ func (r *TaskRepository) GetTaskFile(ctx context.Context, idTask entity.IdTask, 
 			return file.Data, nil
 		}
 	}
-	return []byte{}, fmt.Errorf("TaskRepository.GetTaskFile: %w", errors.ErrFileNotExist)
+	return []byte{}, fmt.Errorf("TaskRepository.GetTaskFile: %w", errors_repo.ErrFileNotExist)
 }

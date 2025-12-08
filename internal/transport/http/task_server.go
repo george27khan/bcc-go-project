@@ -2,7 +2,7 @@ package http
 
 import (
 	"bcc-go-project/internal/domain/entity"
-	rep_err "bcc-go-project/internal/infrastructure/repository/errors"
+	rep_err "bcc-go-project/internal/infrastructure/repository/errors_repo"
 	"bytes"
 	"context"
 	"errors"
