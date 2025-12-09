@@ -1,4 +1,4 @@
-package http
+package server
 
 import (
 	"bcc-go-project/internal/domain/entity"
@@ -13,6 +13,7 @@ import (
 	"time"
 )
 
+//go:generate mockgen -package server -source=task_server.go -destination=mock_task_server.go
 var statusMapping = map[entity.Status]TaskStatus{
 	entity.TaskStatusProcess: PROCESS,
 	entity.TaskStatusDone:    DONE,

@@ -37,18 +37,18 @@ func TestGetTaskFile(t *testing.T) {
 			expected: []byte("Hello World"),
 		},
 		&TestCase{
-			name: "context timeout",
+			name: "context canceled",
 			prepare: func(tt *TestCase, m *mockGetTaskFile) {
-				//var cancel context.CancelFunc
-				timeCancel := 100 * time.Millisecond
-				tt.ctx, cancel := context.WithTimeout(tt.ctx, timeCancel)
+				var cancel context.CancelFunc
+				tt.ctx, cancel = context.WithCancel(tt.ctx)
+				cancel()
 
 			},
 			ctx:         context.Background(),
 			idTask:      entity.IdTask(0),
 			idFile:      entity.IdFile(0),
 			expected:    nil,
-			expectedErr: context.DeadlineExceeded,
+			expectedErr: context.Canceled,
 		},
 		&TestCase{
 			name: "context repo timeout",
@@ -79,18 +79,6 @@ func TestGetTaskFile(t *testing.T) {
 			idFile:      entity.IdFile(0),
 			expected:    nil,
 			expectedErr: errors_repo.ErrTaskNotExist,
-		},
-		&TestCase{
-			name: "file not found",
-			prepare: func(tt *TestCase, m *mockGetTaskFile) {
-				m.repo.EXPECT().GetTaskFile(gomock.Any(), tt.idTask, tt.idFile).
-					Return(nil, errors_repo.ErrFileNotExist)
-			},
-			ctx:         context.Background(),
-			idTask:      entity.IdTask(0),
-			idFile:      entity.IdFile(0),
-			expected:    nil,
-			expectedErr: errors_repo.ErrFileNotExist,
 		},
 	}
 

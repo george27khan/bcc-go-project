@@ -45,6 +45,18 @@ func TestGetTask(t *testing.T) {
 			},
 		},
 		&TestCase{
+			name: "context canceled",
+			prepare: func(tt *TestCase, m *mockGetTask) {
+				var cancel context.CancelFunc
+				tt.ctx, cancel = context.WithCancel(tt.ctx)
+				cancel()
+			},
+			ctx:         context.Background(),
+			idTask:      entity.IdTask(0),
+			expected:    nil,
+			expectedErr: context.Canceled,
+		},
+		&TestCase{
 			name: "context repo timeout",
 			prepare: func(tt *TestCase, m *mockGetTask) {
 				//var cancel context.CancelFunc

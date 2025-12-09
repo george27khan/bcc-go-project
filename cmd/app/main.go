@@ -3,8 +3,8 @@ package main
 import (
 	"bcc-go-project/internal/infrastructure/adatper/http_loader"
 	file_rep "bcc-go-project/internal/infrastructure/repository/local"
-	oapi_srv "bcc-go-project/internal/transport/http"
-	middlewares "bcc-go-project/internal/transport/http/middlewares"
+	"bcc-go-project/internal/transport/http/server"
+	"bcc-go-project/internal/transport/http/server/middlewares"
 	"bcc-go-project/internal/usecase/task"
 	"github.com/getkin/kin-openapi/openapi3filter"
 	chi "github.com/go-chi/chi/v5"
@@ -16,7 +16,7 @@ import (
 func main() {
 	r := chi.NewRouter()
 
-	spec, err := oapi_srv.GetSwagger()
+	spec, err := server.GetSwagger()
 	if err != nil {
 		slog.Error("Failed to get swagger spec", "error", err)
 		return
@@ -27,7 +27,7 @@ func main() {
 		spec, //добавление валидатора свагера
 		&middleware.Options{
 			Options:      openapi3filter.Options{},
-			ErrorHandler: oapi_srv.SwaggerErrorHandlerFunc, // добавление обработчика ошибок на уровне проверки сваггером
+			ErrorHandler: server.SwaggerErrorHandlerFunc, // добавление обработчика ошибок на уровне проверки сваггером
 		},
 	))
 	taskRep := file_rep.NewTaskRepository()
@@ -35,17 +35,17 @@ func main() {
 	taskCreateUseCase := task.NewCreateTaskUseCase(taskRep, loader)
 	taskGetUseCase := task.NewGetTaskUseCase(taskRep)
 	taskFileUseCase := task.NewTaskFileUseCase(taskRep)
-	srv := oapi_srv.NewTaskServer(taskCreateUseCase, taskGetUseCase, taskFileUseCase)
+	srv := server.NewTaskServer(taskCreateUseCase, taskGetUseCase, taskFileUseCase)
 
 	// Регистрируем все эндпоинты из OpenAPI
-	srv1 := oapi_srv.NewStrictHandlerWithOptions(
+	srv1 := server.NewStrictHandlerWithOptions(
 		srv,
-		[]oapi_srv.StrictMiddlewareFunc{middlewares.AddRequestId, middlewares.PanicRecover},
-		oapi_srv.StrictHTTPServerOptions{
-			RequestErrorHandlerFunc:  oapi_srv.RequestErrorHandlerFunc,
-			ResponseErrorHandlerFunc: oapi_srv.ResponseErrorHandlerFunc,
+		[]server.StrictMiddlewareFunc{middlewares.AddRequestId, middlewares.PanicRecover},
+		server.StrictHTTPServerOptions{
+			RequestErrorHandlerFunc:  server.RequestErrorHandlerFunc,
+			ResponseErrorHandlerFunc: server.ResponseErrorHandlerFunc,
 		},
 	)
-	oapi_srv.HandlerFromMux(srv1, r)
+	server.HandlerFromMux(srv1, r)
 	http.ListenAndServe(":8080", r)
 }

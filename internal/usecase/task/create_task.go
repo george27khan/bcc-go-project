@@ -18,6 +18,10 @@ type CreateTaskRepository interface {
 	UpdateFileErr(ctx context.Context, id entity.IdTask, url entity.Url, fileErr error) error
 }
 
+type BackgroundRunner interface {
+	Go(f func(ctx context.Context, task entity.Task) error)
+}
+
 type HttpLoader interface {
 	Load(ctx context.Context, url entity.Url) ([]byte, error)
 }
@@ -25,12 +29,14 @@ type HttpLoader interface {
 type CreateTaskUseCase struct {
 	Repository CreateTaskRepository
 	HttpLoader HttpLoader
+	Runner     BackgroundRunner
 }
 
 func NewCreateTaskUseCase(createTaskRepo CreateTaskRepository, httpLoader HttpLoader) *CreateTaskUseCase {
 	return &CreateTaskUseCase{
 		Repository: createTaskRepo,
 		HttpLoader: httpLoader,
+		//Runner:     runner,
 	}
 }
 
@@ -46,8 +52,9 @@ func (ts *CreateTaskUseCase) CreateTask(ctx context.Context, task entity.Task) (
 	}
 
 	task.Id = idTask
+	//ts.Runner.Go(ts.RunDownload)
 
-	// асинхронный запуск загрузки URLов
+	//асинхронный запуск загрузки URLов
 	go func() {
 		wg := &sync.WaitGroup{}
 		detachCtx := dctx.DetachContext(ctx)                                        // создаем независимую копию контекста т.к основной протухнет при ответе
@@ -88,3 +95,43 @@ func (ts *CreateTaskUseCase) CreateTask(ctx context.Context, task entity.Task) (
 	// отправляем ответ
 	return task.Id, task.Status, nil
 }
+
+//
+//// CreateTask функция создания таска
+//func (ts *CreateTaskUseCase) RunDownload(ctx context.Context, task entity.Task) error {
+//	wg := &sync.WaitGroup{}
+//	detachCtx := dctx.DetachContext(ctx)                                        // создаем независимую копию контекста т.к основной протухнет при ответе
+//	loadCtx, cancel := context.WithTimeout(detachCtx, task.Timeout*time.Second) // от него создаем контекст для загрузчиков с общим таймаутом таска
+//	defer cancel()
+//	for _, file := range task.Files {
+//		//запускаем скачивание файлов асинхронно
+//		wg.Add(1)
+//		go func() {
+//			defer wg.Done()
+//			if data, err := ts.HttpLoader.Load(loadCtx, file.Url); err != nil {
+//				file.Error = err
+//				ctxRep, cancelRep := context.WithTimeout(loadCtx, 100*time.Millisecond)
+//				defer cancelRep()
+//				_ = ts.Repository.UpdateFileErr(ctxRep, idTask, file.Url, file.Error)
+//				log.Printf("Ошибка загрузки файла taskId=%v; url=%s : %s", idTask, file.Url, err)
+//			} else {
+//				file.Data = data
+//				ctxRep, cancelRep := context.WithTimeout(loadCtx, 100*time.Millisecond)
+//				defer cancelRep()
+//				_ = ts.Repository.UpdateFileData(ctxRep, idTask, file.Url, file.Data)
+//				log.Printf("Файл загружен taskId=%v; url=%s", idTask, file.Url)
+//			}
+//		}()
+//	}
+//	//ждем завершение загрузок или таймаута
+//	wg.Wait()
+//	ctxRep, cancelRep := context.WithTimeout(loadCtx, 100*time.Millisecond)
+//	defer cancelRep()
+//	err := ts.Repository.UpdateStatus(ctxRep, task.Id, entity.TaskStatusDone)
+//	if err != nil {
+//		log.Printf("CreateTask.UpdateStatus taskId=%v: %s", idTask, err)
+//	} else {
+//		log.Printf("Загрузка таска завершена taskId=%v", idTask)
+//	}
+//
+//}
