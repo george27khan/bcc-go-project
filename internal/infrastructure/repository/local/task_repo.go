@@ -24,8 +24,10 @@ type TaskRepository struct {
 
 func NewTaskRepository() *TaskRepository {
 	return &TaskRepository{
-		tasks: make(map[entity.IdTask]entity.Task, 100),
-		mu:    &sync.RWMutex{},
+		tasks:  make(map[entity.IdTask]entity.Task, 100),
+		mu:     &sync.RWMutex{},
+		idFile: entity.IdFile(1),
+		idTask: entity.IdTask(1),
 	}
 }
 
@@ -146,8 +148,8 @@ func (r *TaskRepository) GetTaskFile(ctx context.Context, idTask entity.IdTask, 
 	} else {
 		for _, file := range task.Files {
 			if file.Id == idFile {
+				return file.Data, nil
 			}
-			return file.Data, nil
 		}
 	}
 	return []byte{}, fmt.Errorf("TaskRepository.GetTaskFile: %w", errors_repo.ErrFileNotExist)

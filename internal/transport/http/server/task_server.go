@@ -44,6 +44,27 @@ func NewTaskServer(taskCreateUseCase TaskCreateUseCase, taskGetUseCase TaskGetUs
 	}
 }
 
+func resp400(msg string, err error) BadRequest400JSONResponse {
+	return BadRequest400JSONResponse{
+		Code:    NOTFOUND,
+		Message: fmt.Errorf("%s: %w", msg, err).Error(),
+	}
+}
+
+func resp404(msg string, err error) NotFound404JSONResponse {
+	return NotFound404JSONResponse{
+		Code:    NOTFOUND,
+		Message: fmt.Errorf("%s: %w", msg, err).Error(),
+	}
+}
+
+func resp500(msg string, err error) InternalServerError500JSONResponse {
+	return InternalServerError500JSONResponse{
+		Code:    INTERNALSERVERERROR,
+		Message: fmt.Errorf("%s: %w", msg, err).Error(),
+	}
+}
+
 func validateURL(u string) error {
 	parsed, err := url.ParseRequestURI(u)
 	if err != nil {
@@ -85,24 +106,17 @@ func strToDuration(timeStr string) (time.Duration, error) {
 */
 func (s *TaskServer) PostDownloads(ctx context.Context, request PostDownloadsRequestObject) (PostDownloadsResponseObject, error) {
 	if ctx.Err() != nil {
-		return nil, fmt.Errorf("PostDownloads: %w", ctx.Err())
+		return PostDownloads500JSONResponse{resp500("PostDownloads", ctx.Err())}, nil
 	}
 	if err := validate(request.Body); err != nil {
 		return &PostDownloads400JSONResponse{
-			BadRequest400JSONResponse{
-				BadRequest,
-				fmt.Sprintf("PostDownloads: ошибка валидации параметров: %s", err),
-			},
-		}, err
+			resp400("PostDownloads: ошибка валидации параметров", err)}, err
 	}
 	timeout, err := strToDuration(request.Body.Timeout)
 	if err != nil {
 		return &PostDownloads400JSONResponse{
-			BadRequest400JSONResponse{
-				BadRequest,
-				fmt.Sprintf("PostDownloads: ошибка валидации таймаута: %s", err),
-			},
-		}, err
+				resp400("PostDownloads: ошибка валидации таймаута", err)},
+			err
 	}
 	urls := make([]entity.Url, len(request.Body.Files))
 	for i, urlTask := range request.Body.Files {
@@ -111,12 +125,9 @@ func (s *TaskServer) PostDownloads(ctx context.Context, request PostDownloadsReq
 	task := entity.NewTask(timeout, urls)
 	taskId, taskStatus, err := s.TaskCreateUseCase.CreateTask(ctx, task)
 	if err != nil {
-		return &PostDownloads500JSONResponse{
-			InternalServerError500JSONResponse{
-				InternalServerError,
-				fmt.Sprintf("PostDownloads: ошибка  при создании таска на загрузку: %s", err),
-			},
-		}, err
+		return PostDownloads500JSONResponse{
+				resp500("PostDownloads: ошибка  при создании таска на загрузку", ctx.Err())},
+			nil
 	}
 	return &PostDownloads201JSONResponse{
 		Id:     int(taskId),
@@ -127,18 +138,14 @@ func (s *TaskServer) PostDownloads(ctx context.Context, request PostDownloadsReq
 // GetDownloadsId получение таска
 func (s *TaskServer) GetDownloadsId(ctx context.Context, request GetDownloadsIdRequestObject) (GetDownloadsIdResponseObject, error) {
 	if ctx.Err() != nil {
-		return nil, fmt.Errorf("PostDownloads: %w", ctx.Err())
+		return GetDownloadsId500JSONResponse{resp500("GetDownloadsId", ctx.Err())}, nil
 	}
 	task, err := s.TaskGetUseCase.GetTask(ctx, entity.IdTask(request.Id))
 	if err != nil {
 		if errors.Is(err, rep_err.ErrTaskNotExist) {
-			return GetDownloadsId404JSONResponse{NotFound404JSONResponse{
-				Code:    NotFound,
-				Message: fmt.Errorf("GetDownloadsId: %w", err).Error(),
-			}}, nil
+			return GetDownloadsId404JSONResponse{resp404("GetDownloadsId", err)}, nil
 		}
 	}
-
 	//собираем файлы для ответа
 	files := make([]DownloadsIdResponse_Files_Item, len(task.Files))
 	for i, file := range task.Files {
@@ -169,15 +176,12 @@ func (s *TaskServer) GetDownloadsId(ctx context.Context, request GetDownloadsIdR
 // /downloads/0/files/0
 func (s *TaskServer) GetDownloadsIdFilesFileId(ctx context.Context, request GetDownloadsIdFilesFileIdRequestObject) (GetDownloadsIdFilesFileIdResponseObject, error) {
 	if ctx.Err() != nil {
-		return nil, fmt.Errorf("PostDownloads: %w", ctx.Err())
+		return GetDownloadsIdFilesFileId500JSONResponse{resp500("GetDownloadsIdFilesFileId", ctx.Err())}, nil
 	}
 	data, err := s.TaskFileUseCase.GetTaskFile(ctx, entity.IdTask(request.Id), entity.IdFile(request.FileId))
 	if err != nil {
 		if errors.Is(err, rep_err.ErrTaskNotExist) || errors.Is(err, rep_err.ErrFileNotExist) {
-			return GetDownloadsIdFilesFileId404JSONResponse{NotFound404JSONResponse{
-				Code:    NotFound,
-				Message: fmt.Errorf("GetDownloadsIdFilesFileId: %w", err).Error(),
-			}}, nil
+			return GetDownloadsIdFilesFileId404JSONResponse{resp404("GetDownloadsIdFilesFileId", err)}, nil
 		}
 	}
 	return GetDownloadsIdFilesFileId200ApplicationoctetStreamResponse{

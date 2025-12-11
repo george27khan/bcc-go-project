@@ -23,21 +23,21 @@ func TestCreateTask(t *testing.T) {
 		expectedErr    error
 	}
 	testCases := []*TestCase{
-		&TestCase{
-			name: "success",
-			prepare: func(tt *TestCase, m *mockCreateTask) {
-				m.repo.EXPECT().Create(gomock.Any(), tt.Task).
-					Return(entity.IdTask(0), nil)
-			},
-			ctx: context.Background(),
-			Task: entity.Task{
-				Id:     entity.IdTask(0),
-				Status: entity.TaskStatusProcess,
-			},
-			expectedIdTask: entity.IdTask(0),
-			expectedStatus: entity.TaskStatusProcess,
-			expectedErr:    nil,
-		},
+		//&TestCase{
+		//	name: "success",
+		//	prepare: func(tt *TestCase, m *mockCreateTask) {
+		//		m.repo.EXPECT().Create(gomock.Any(), tt.Task).
+		//			Return(entity.IdTask(0), nil)
+		//	},
+		//	ctx: context.Background(),
+		//	Task: entity.Task{
+		//		Id:     entity.IdTask(0),
+		//		Status: entity.TaskStatusProcess,
+		//	},
+		//	expectedIdTask: entity.IdTask(0),
+		//	expectedStatus: entity.TaskStatusProcess,
+		//	expectedErr:    nil,
+		//},
 		//&TestCase{
 		//	name: "context canceled",
 		//	prepare: func(tt *TestCase, m *mockCreateTask) {

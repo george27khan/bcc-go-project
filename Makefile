@@ -10,10 +10,10 @@ run:
 	$(BINARY_NAME)
 
 test:
-	go test ./...
+	go test -v ./...
 
 cover:
-	go test ./... -coverprofile=$(COVER_PROFILE)
+	go test -v ./... -coverprofile=$(COVER_PROFILE)
 	go tool cover -html=$(COVER_PROFILE) -o cover.html
 
 clean:

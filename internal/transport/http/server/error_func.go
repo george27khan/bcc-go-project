@@ -21,19 +21,19 @@ func SwaggerErrorHandlerFunc(w http.ResponseWriter, message string, statusCode i
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
 	if statusCode == http.StatusBadRequest {
-		EncodeResponse(w, message, statusCode, BadRequest)
+		EncodeResponse(w, message, statusCode, BADREQUEST)
 		return
 	}
-	EncodeResponse(w, message, http.StatusInternalServerError, InternalServerError)
+	EncodeResponse(w, message, http.StatusInternalServerError, INTERNALSERVERERROR)
 	return
 }
 
 func RequestErrorHandlerFunc(w http.ResponseWriter, r *http.Request, err error) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	EncodeResponse(w, err.Error(), http.StatusBadRequest, BadRequest)
+	EncodeResponse(w, err.Error(), http.StatusBadRequest, BADREQUEST)
 }
 
 func ResponseErrorHandlerFunc(w http.ResponseWriter, r *http.Request, err error) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	EncodeResponse(w, err.Error(), http.StatusInternalServerError, BadRequest)
+	EncodeResponse(w, err.Error(), http.StatusInternalServerError, BADREQUEST)
 }

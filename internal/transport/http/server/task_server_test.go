@@ -19,7 +19,7 @@ func TestGetDownloadsId(t *testing.T) {
 		prepare         func(tt *TestCase, m *mockGetTask)
 		ctx             context.Context
 		req             GetDownloadsIdRequestObject
-		expectType      GetDownloadsId200JSONResponse
+		expectType      any
 		expectedUrlFile UrlFile
 		expectedUrlErr  UrlErr
 		expectId        IdTask
@@ -67,8 +67,19 @@ func TestGetDownloadsId(t *testing.T) {
 			expectStatus: DONE,
 			expectedErr:  nil,
 		},
+		{
+			name: "context canceled",
+			prepare: func(tt *TestCase, m *mockGetTask) {
+				var cancel context.CancelFunc
+				tt.ctx, cancel = context.WithCancel(tt.ctx)
+				cancel()
+			},
+			ctx:         context.Background(),
+			req:         GetDownloadsIdRequestObject{},
+			expectType:  GetDownloadsId500JSONResponse{},
+			expectedErr: nil,
+		},
 	}
-
 	for _, tt := range TestCases {
 		t.Run(tt.name, func(t *testing.T) {
 			ctrl := gomock.NewController(t)
@@ -90,19 +101,28 @@ func TestGetDownloadsId(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-			val, ok := resp.(GetDownloadsId200JSONResponse)
-			require.Equal(t, ok, true)
-			require.Equal(t, val.Status, tt.expectStatus)
-			require.Equal(t, val.Id, tt.expectId)
+			switch respType := resp.(type) {
+			case GetDownloadsId200JSONResponse:
+				_ = respType
+				val, ok := resp.(GetDownloadsId200JSONResponse)
+				require.Equal(t, ok, true)
+				require.Equal(t, val.Status, tt.expectStatus)
+				require.Equal(t, val.Id, tt.expectId)
 
-			urlFile, err := val.Files[0].AsUrlFile()
-			require.NoError(t, err)
-			require.Equal(t, urlFile, tt.expectedUrlFile)
+				urlFile, err := val.Files[0].AsUrlFile()
+				require.NoError(t, err)
+				require.Equal(t, urlFile, tt.expectedUrlFile)
 
-			urlErr, err := val.Files[1].AsUrlErr()
-			require.NoError(t, err)
-			require.Equal(t, urlErr, tt.expectedUrlErr)
+				urlErr, err := val.Files[1].AsUrlErr()
+				require.NoError(t, err)
+				require.Equal(t, urlErr, tt.expectedUrlErr)
+
+				t.Log("GetDownloadsId200JSONResponse", val)
+			case GetDownloadsId400JSONResponse:
+			default:
+				require.Fail(t, "unexpected response type")
+			}
+
 		})
 	}
-
 }

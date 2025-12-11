@@ -170,7 +170,7 @@ components:
     ErrorCode:
       type: string
       description: Код ошибки для файла
-      enum: [ timeout, not_found, forbidden, bad_request, internal_server_error]
+      enum: [ TIMEOUT, NOT_FOUND, FORBIDDEN, BAD_REQUEST, INTERNAL_SERVER_ERROR]
 
   examples:
     InitTaskReq:
