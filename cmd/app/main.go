@@ -4,11 +4,11 @@ import (
 	"bcc-go-project/internal/infrastructure/adatper/http_loader"
 	file_rep "bcc-go-project/internal/infrastructure/repository/local"
 	"bcc-go-project/internal/transport/http/server"
-	"bcc-go-project/internal/transport/http/server/middlewares"
+	"bcc-go-project/internal/transport/http/server/middleware"
 	"bcc-go-project/internal/usecase/task"
 	"github.com/getkin/kin-openapi/openapi3filter"
 	chi "github.com/go-chi/chi/v5"
-	middleware "github.com/oapi-codegen/nethttp-middleware"
+	mw "github.com/oapi-codegen/nethttp-middleware"
 	"log/slog"
 	"net/http"
 )
@@ -23,16 +23,17 @@ func main() {
 	}
 	// Middleware проверки запросов
 
-	r.Use(middleware.OapiRequestValidatorWithOptions(
+	r.Use(mw.OapiRequestValidatorWithOptions(
 		spec, //добавление валидатора свагера
-		&middleware.Options{
+		&mw.Options{
 			Options:      openapi3filter.Options{},
 			ErrorHandler: server.SwaggerErrorHandlerFunc, // добавление обработчика ошибок на уровне проверки сваггером
 		},
 	))
 	taskRep := file_rep.NewTaskRepository()
 	loader := http_loader.NewHttpLoader(&http.Client{})
-	taskCreateUseCase := task.NewCreateTaskUseCase(taskRep, loader)
+	runner := &task.AsyncRunner{}
+	taskCreateUseCase := task.NewCreateTaskUseCase(taskRep, loader, runner)
 	taskGetUseCase := task.NewGetTaskUseCase(taskRep)
 	taskFileUseCase := task.NewTaskFileUseCase(taskRep)
 	srv := server.NewTaskServer(taskCreateUseCase, taskGetUseCase, taskFileUseCase)
@@ -40,7 +41,7 @@ func main() {
 	// Регистрируем все эндпоинты из OpenAPI
 	srv1 := server.NewStrictHandlerWithOptions(
 		srv,
-		[]server.StrictMiddlewareFunc{middlewares.AddRequestId, middlewares.PanicRecover},
+		[]server.StrictMiddlewareFunc{middleware.AddRequestId, middleware.PanicRecover},
 		server.StrictHTTPServerOptions{
 			RequestErrorHandlerFunc:  server.RequestErrorHandlerFunc,
 			ResponseErrorHandlerFunc: server.ResponseErrorHandlerFunc,

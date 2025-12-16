@@ -8,6 +8,7 @@ import (
 	entity "bcc-go-project/internal/domain/entity"
 	context "context"
 	reflect "reflect"
+	sync "sync"
 
 	gomock "github.com/golang/mock/gomock"
 )
@@ -90,6 +91,53 @@ func (m *MockCreateTaskRepository) UpdateStatus(ctx context.Context, id entity.I
 func (mr *MockCreateTaskRepositoryMockRecorder) UpdateStatus(ctx, id, status interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateStatus", reflect.TypeOf((*MockCreateTaskRepository)(nil).UpdateStatus), ctx, id, status)
+}
+
+// MockBackgroundRunner is a mock of BackgroundRunner interface.
+type MockBackgroundRunner struct {
+	ctrl     *gomock.Controller
+	recorder *MockBackgroundRunnerMockRecorder
+}
+
+// MockBackgroundRunnerMockRecorder is the mock recorder for MockBackgroundRunner.
+type MockBackgroundRunnerMockRecorder struct {
+	mock *MockBackgroundRunner
+}
+
+// NewMockBackgroundRunner creates a new mock instance.
+func NewMockBackgroundRunner(ctrl *gomock.Controller) *MockBackgroundRunner {
+	mock := &MockBackgroundRunner{ctrl: ctrl}
+	mock.recorder = &MockBackgroundRunnerMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockBackgroundRunner) EXPECT() *MockBackgroundRunnerMockRecorder {
+	return m.recorder
+}
+
+// GoFile mocks base method.
+func (m *MockBackgroundRunner) GoFile(ctx context.Context, wg *sync.WaitGroup, idTask entity.IdTask, file entity.File, f func(context.Context, *sync.WaitGroup, entity.IdTask, entity.File)) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "GoFile", ctx, wg, idTask, file, f)
+}
+
+// GoFile indicates an expected call of GoFile.
+func (mr *MockBackgroundRunnerMockRecorder) GoFile(ctx, wg, idTask, file, f interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GoFile", reflect.TypeOf((*MockBackgroundRunner)(nil).GoFile), ctx, wg, idTask, file, f)
+}
+
+// GoTask mocks base method.
+func (m *MockBackgroundRunner) GoTask(ctx context.Context, task entity.Task, f func(context.Context, entity.Task)) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "GoTask", ctx, task, f)
+}
+
+// GoTask indicates an expected call of GoTask.
+func (mr *MockBackgroundRunnerMockRecorder) GoTask(ctx, task, f interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GoTask", reflect.TypeOf((*MockBackgroundRunner)(nil).GoTask), ctx, task, f)
 }
 
 // MockHttpLoader is a mock of HttpLoader interface.

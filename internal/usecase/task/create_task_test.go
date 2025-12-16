@@ -6,6 +6,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	"testing"
+	"time"
 )
 
 type mockCreateTask struct {
@@ -23,52 +24,54 @@ func TestCreateTask(t *testing.T) {
 		expectedErr    error
 	}
 	testCases := []*TestCase{
-		//&TestCase{
-		//	name: "success",
-		//	prepare: func(tt *TestCase, m *mockCreateTask) {
-		//		m.repo.EXPECT().Create(gomock.Any(), tt.Task).
-		//			Return(entity.IdTask(0), nil)
-		//	},
-		//	ctx: context.Background(),
-		//	Task: entity.Task{
-		//		Id:     entity.IdTask(0),
-		//		Status: entity.TaskStatusProcess,
-		//	},
-		//	expectedIdTask: entity.IdTask(0),
-		//	expectedStatus: entity.TaskStatusProcess,
-		//	expectedErr:    nil,
-		//},
-		//&TestCase{
-		//	name: "context canceled",
-		//	prepare: func(tt *TestCase, m *mockCreateTask) {
-		//		var cancel context.CancelFunc
-		//		tt.ctx, cancel = context.WithCancel(tt.ctx)
-		//		cancel()
-		//	},
-		//	ctx:            context.Background(),
-		//	Task:           entity.Task{},
-		//	expectedidTask: entity.IdTask(0),
-		//	expectedStatus: entity.TaskStatusProcess,
-		//	expectedErr:    context.Canceled,
-		//},
-		//&TestCase{
-		//	name: "context repo timeout",
-		//	prepare: func(tt *TestCase, m *mockCreateTask) {
-		//		//var cancel context.CancelFunc
-		//		tt.ctx, _ = context.WithTimeout(tt.ctx, 100*time.Millisecond)
-		//		//defer cancel()
-		//		m.repo.EXPECT().Create(gomock.Any(), tt.Task).DoAndReturn(
-		//			func(ctx context.Context, Task entity.Task) (entity.IdTask, error) {
-		//				<-ctx.Done()
-		//				return entity.IdTask(0), ctx.Err()
-		//			})
-		//	},
-		//	ctx:            context.Background(),
-		//	Task:           entity.Task{},
-		//	expectedidTask: entity.IdTask(0),
-		//	expectedStatus: entity.TaskStatusProcess,
-		//	expectedErr:    context.DeadlineExceeded,
-		//},
+		&TestCase{
+			name: "success",
+			prepare: func(tt *TestCase, m *mockCreateTask) {
+				m.repo.EXPECT().Create(gomock.Any(), tt.Task).
+					Return(entity.IdTask(0), nil)
+				m.repo.EXPECT().UpdateFileData(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+				m.repo.EXPECT().UpdateStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+			},
+			ctx: context.Background(),
+			Task: entity.Task{
+				Id:     entity.IdTask(0),
+				Status: entity.TaskStatusProcess,
+			},
+			expectedIdTask: entity.IdTask(0),
+			expectedStatus: entity.TaskStatusProcess,
+			expectedErr:    nil,
+		},
+		&TestCase{
+			name: "context canceled",
+			prepare: func(tt *TestCase, m *mockCreateTask) {
+				var cancel context.CancelFunc
+				tt.ctx, cancel = context.WithCancel(tt.ctx)
+				cancel()
+			},
+			ctx:            context.Background(),
+			Task:           entity.Task{},
+			expectedIdTask: entity.IdTask(0),
+			expectedStatus: entity.Status(""),
+			expectedErr:    context.Canceled,
+		},
+		&TestCase{
+			name: "context repo timeout",
+			prepare: func(tt *TestCase, m *mockCreateTask) {
+				//var cancel context.CancelFunc
+				tt.ctx, _ = context.WithTimeout(tt.ctx, 100*time.Millisecond)
+				//defer cancel()
+				m.repo.EXPECT().Create(gomock.Any(), tt.Task).DoAndReturn(
+					func(ctx context.Context, Task entity.Task) (entity.IdTask, error) {
+						<-ctx.Done()
+						return entity.IdTask(0), ctx.Err()
+					})
+			},
+			ctx:            context.Background(),
+			Task:           entity.Task{},
+			expectedIdTask: entity.IdTask(0),
+			expectedStatus: entity.Status(""),
+			expectedErr:    context.DeadlineExceeded,
+		},
 	}
 
 	for _, tt := range testCases {
@@ -77,21 +80,22 @@ func TestCreateTask(t *testing.T) {
 			defer ctrl.Finish()
 			rep := NewMockCreateTaskRepository(ctrl)
 			loader := NewMockHttpLoader(ctrl)
+			runner := &SyncRunner{}
 			m := &mockCreateTask{rep}
 
 			if tt.prepare != nil {
 				tt.prepare(tt, m)
 			}
 
-			tf := NewCreateTaskUseCase(rep, loader)
+			tf := NewCreateTaskUseCase(rep, loader, runner)
 			idTask, status, err := tf.CreateTask(tt.ctx, tt.Task)
 			if tt.expectedErr != nil {
 				require.ErrorIs(t, err, tt.expectedErr)
 				return
 			}
 			require.NoError(t, err)
-			require.Equal(t, idTask, tt.expectedIdTask)
-			require.Equal(t, status, tt.expectedStatus)
+			require.Equal(t, tt.expectedIdTask, idTask)
+			require.Equal(t, tt.expectedStatus, status)
 		})
 	}
 }

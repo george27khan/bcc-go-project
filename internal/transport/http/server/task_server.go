@@ -46,7 +46,7 @@ func NewTaskServer(taskCreateUseCase TaskCreateUseCase, taskGetUseCase TaskGetUs
 
 func resp400(msg string, err error) BadRequest400JSONResponse {
 	return BadRequest400JSONResponse{
-		Code:    NOTFOUND,
+		Code:    BADREQUEST,
 		Message: fmt.Errorf("%s: %w", msg, err).Error(),
 	}
 }
@@ -109,15 +109,15 @@ func (s *TaskServer) PostDownloads(ctx context.Context, request PostDownloadsReq
 		return PostDownloads500JSONResponse{resp500("PostDownloads", ctx.Err())}, nil
 	}
 	if err := validate(request.Body); err != nil {
-		return &PostDownloads400JSONResponse{
-			resp400("PostDownloads: ошибка валидации параметров", err)}, err
+		return PostDownloads400JSONResponse{
+			resp400("PostDownloads: ошибка валидации параметров", err)}, nil
 	}
 	timeout, err := strToDuration(request.Body.Timeout)
-	if err != nil {
-		return &PostDownloads400JSONResponse{
-				resp400("PostDownloads: ошибка валидации таймаута", err)},
-			err
-	}
+	//if err != nil {
+	//	return PostDownloads400JSONResponse{
+	//			resp400("PostDownloads: ошибка валидации таймаута", err)},
+	//		nil
+	//}
 	urls := make([]entity.Url, len(request.Body.Files))
 	for i, urlTask := range request.Body.Files {
 		urls[i] = entity.Url(urlTask.Url)
@@ -126,10 +126,10 @@ func (s *TaskServer) PostDownloads(ctx context.Context, request PostDownloadsReq
 	taskId, taskStatus, err := s.TaskCreateUseCase.CreateTask(ctx, task)
 	if err != nil {
 		return PostDownloads500JSONResponse{
-				resp500("PostDownloads: ошибка  при создании таска на загрузку", ctx.Err())},
+				resp500("PostDownloads", err)},
 			nil
 	}
-	return &PostDownloads201JSONResponse{
+	return PostDownloads201JSONResponse{
 		Id:     int(taskId),
 		Status: statusMapping[taskStatus],
 	}, nil

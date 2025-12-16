@@ -2,6 +2,7 @@
 // Source: get_task.go
 
 // Package task is a generated GoMock package.
+
 package task
 
 import (

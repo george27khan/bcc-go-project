@@ -100,7 +100,7 @@ func TestGetTaskFile(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-			require.Equal(t, got, tt.expected)
+			require.Equal(t, tt.expected, got)
 		})
 	}
 }
