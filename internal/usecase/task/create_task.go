@@ -2,7 +2,6 @@ package task
 
 import (
 	"bcc-go-project/internal/domain/entity"
-	dctx "bcc-go-project/internal/pkg/detach_context"
 	"context"
 	"fmt"
 	"log"
@@ -19,14 +18,16 @@ type CreateTaskRepository interface {
 }
 
 type BackgroundRunner interface {
-	GoTask(ctx context.Context, task entity.Task, f func(context.Context, entity.Task))
+	GoTask(ctx context.Context, task entity.Task, f func(context.Context, *sync.WaitGroup, entity.Task))
 	GoFile(ctx context.Context, wg *sync.WaitGroup, idTask entity.IdTask, file entity.File, f func(context.Context, *sync.WaitGroup, entity.IdTask, entity.File))
 }
 
-type AsyncRunner struct{}
+type AsyncRunner struct {
+	WgRoot *sync.WaitGroup
+}
 
-func (ar *AsyncRunner) GoTask(ctx context.Context, task entity.Task, f func(context.Context, entity.Task)) {
-	go f(ctx, task)
+func (ar *AsyncRunner) GoTask(ctx context.Context, task entity.Task, f func(context.Context, *sync.WaitGroup, entity.Task)) {
+	go f(ctx, ar.WgRoot, task)
 }
 
 func (ar *AsyncRunner) GoFile(ctx context.Context, wg *sync.WaitGroup, idTask entity.IdTask, file entity.File, f func(context.Context, *sync.WaitGroup, entity.IdTask, entity.File)) {
@@ -50,16 +51,19 @@ type CreateTaskUseCase struct {
 	Repository CreateTaskRepository
 	HttpLoader HttpLoader
 	Runner     BackgroundRunner
+	RootCtx    context.Context
 }
 
 func NewCreateTaskUseCase(createTaskRepo CreateTaskRepository,
 	httpLoader HttpLoader,
 	runner BackgroundRunner,
+	rootCtx context.Context,
 ) *CreateTaskUseCase {
 	return &CreateTaskUseCase{
 		Repository: createTaskRepo,
 		HttpLoader: httpLoader,
 		Runner:     runner,
+		RootCtx:    rootCtx,
 	}
 }
 
@@ -75,16 +79,18 @@ func (ts *CreateTaskUseCase) CreateTask(ctx context.Context, task entity.Task) (
 	}
 
 	task.Id = idTask
-	ts.Runner.GoTask(ctx, task, ts.RunDownload)
+	ts.Runner.GoTask(ts.RootCtx, task, ts.RunDownload)
 	// отправляем ответ
 	return task.Id, task.Status, nil
 }
 
 // RunDownload запуск загрузок
-func (ts *CreateTaskUseCase) RunDownload(ctx context.Context, task entity.Task) {
+func (ts *CreateTaskUseCase) RunDownload(ctx context.Context, wgRoot *sync.WaitGroup, task entity.Task) {
+	wgRoot.Add(1)
+	defer wgRoot.Done()
 	wg := &sync.WaitGroup{}
-	detachCtx := dctx.DetachContext(ctx)                                        // создаем независимую копию контекста т.к основной протухнет при ответе
-	loadCtx, cancel := context.WithTimeout(detachCtx, task.Timeout*time.Second) // от него создаем контекст для загрузчиков с общим таймаутом таска
+	//detachCtx := dctx.DetachContext(ctx)                                        // создаем независимую копию контекста т.к основной протухнет при ответе
+	loadCtx, cancel := context.WithTimeout(ctx, task.Timeout*time.Second) // от него создаем контекст для загрузчиков с общим таймаутом таска
 	defer cancel()
 	for _, file := range task.Files {
 		//запускаем скачивание файлов асинхронно
@@ -106,6 +112,7 @@ func (ts *CreateTaskUseCase) RunDownload(ctx context.Context, task entity.Task) 
 // DownloadFile запуск скачивания файла
 func (ts *CreateTaskUseCase) DownloadFile(ctx context.Context, wg *sync.WaitGroup, idTask entity.IdTask, file entity.File) {
 	defer wg.Done()
+	//time.Sleep(60 * time.Second)
 	if data, err := ts.HttpLoader.Load(ctx, file.Url); err != nil {
 		file.Error = err
 		ctxRep, cancelRep := context.WithTimeout(ctx, 100*time.Millisecond)

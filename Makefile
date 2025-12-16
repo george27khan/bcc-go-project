@@ -4,10 +4,10 @@ COVER_PROFILE=cover.out
 .PHONY: build run test cover clean
 
 build:
-	go build -o $(BINARY_NAME) .
+	go build -o $(BINARY_NAME) ./cmd/app/
 
 run:
-	$(BINARY_NAME)
+	./$(BINARY_NAME)
 
 test:
 	go test -v ./...
