@@ -3,6 +3,7 @@ package task
 import (
 	"bcc-go-project/internal/domain/entity"
 	"context"
+	"errors"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	"sync"
@@ -11,21 +12,15 @@ import (
 )
 
 type mockCreateTask struct {
-	repo *MockCreateTaskRepository
-}
-
-type mockLoader struct {
+	repo   *MockCreateTaskRepository
 	loader *MockHttpLoader
-}
-
-type mockRunner struct {
 	runner *MockBackgroundRunner
 }
 
 func TestCreateTask(t *testing.T) {
 	type TestCase struct {
 		name           string
-		prepare        func(tt *TestCase, m *mockCreateTask, r *mockRunner)
+		prepare        func(tt *TestCase, m *mockCreateTask)
 		ctx            context.Context
 		Task           entity.Task
 		expectedIdTask entity.IdTask
@@ -35,9 +30,9 @@ func TestCreateTask(t *testing.T) {
 	testCases := []*TestCase{
 		{
 			name: "success",
-			prepare: func(tt *TestCase, m *mockCreateTask, r *mockRunner) {
+			prepare: func(tt *TestCase, m *mockCreateTask) {
 				m.repo.EXPECT().Create(gomock.Any(), tt.Task).Return(entity.IdTask(0), nil)
-				r.runner.EXPECT().GoTask(gomock.Any(), gomock.Any(), gomock.Any())
+				m.runner.EXPECT().GoTask(gomock.Any(), gomock.Any(), gomock.Any())
 			},
 			ctx: context.Background(),
 			Task: entity.Task{
@@ -50,7 +45,7 @@ func TestCreateTask(t *testing.T) {
 		},
 		{
 			name: "context canceled",
-			prepare: func(tt *TestCase, m *mockCreateTask, r *mockRunner) {
+			prepare: func(tt *TestCase, m *mockCreateTask) {
 				var cancel context.CancelFunc
 				tt.ctx, cancel = context.WithCancel(tt.ctx)
 				cancel()
@@ -60,7 +55,7 @@ func TestCreateTask(t *testing.T) {
 		},
 		{
 			name: "context repo timeout",
-			prepare: func(tt *TestCase, m *mockCreateTask, r *mockRunner) {
+			prepare: func(tt *TestCase, m *mockCreateTask) {
 				//var cancel context.CancelFunc
 				tt.ctx, _ = context.WithTimeout(tt.ctx, 100*time.Millisecond)
 				m.repo.EXPECT().Create(tt.ctx, gomock.Any()).DoAndReturn(
@@ -82,11 +77,10 @@ func TestCreateTask(t *testing.T) {
 			loader := NewMockHttpLoader(ctrl)
 			runner := NewMockBackgroundRunner(ctrl)
 
-			r := &mockRunner{runner}
-			m := &mockCreateTask{rep}
+			m := &mockCreateTask{repo: rep, runner: runner}
 
 			if tt.prepare != nil {
-				tt.prepare(tt, m, r)
+				tt.prepare(tt, m)
 			}
 
 			tf := NewCreateTaskUseCase(rep, loader, runner, context.Background())
@@ -105,7 +99,7 @@ func TestCreateTask(t *testing.T) {
 func TestRunDownload(t *testing.T) {
 	type TestCase struct {
 		name        string
-		prepare     func(tt *TestCase, m *mockCreateTask, r *mockRunner)
+		prepare     func(tt *TestCase, m *mockCreateTask)
 		ctx         context.Context
 		Task        entity.Task
 		wg          *sync.WaitGroup
@@ -114,8 +108,8 @@ func TestRunDownload(t *testing.T) {
 	testCases := []*TestCase{
 		{
 			name: "success",
-			prepare: func(tt *TestCase, m *mockCreateTask, r *mockRunner) {
-				r.runner.EXPECT().GoFile(gomock.Any(), tt.wg, gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+			prepare: func(tt *TestCase, m *mockCreateTask) {
+				m.runner.EXPECT().GoFile(gomock.Any(), tt.wg, gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
 					func(ctx context.Context, wg *sync.WaitGroup, idTask entity.IdTask, file entity.File, f func(context.Context, *sync.WaitGroup, entity.IdTask, entity.File) error) {
 						wg.Done()
 					},
@@ -134,7 +128,7 @@ func TestRunDownload(t *testing.T) {
 		},
 		{
 			name: "context canceled",
-			prepare: func(tt *TestCase, m *mockCreateTask, r *mockRunner) {
+			prepare: func(tt *TestCase, m *mockCreateTask) {
 				var cancel context.CancelFunc
 				tt.ctx, cancel = context.WithCancel(tt.ctx)
 				cancel()
@@ -151,8 +145,8 @@ func TestRunDownload(t *testing.T) {
 		},
 		{
 			name: "context timeout",
-			prepare: func(tt *TestCase, m *mockCreateTask, r *mockRunner) {
-				r.runner.EXPECT().GoFile(gomock.Any(), tt.wg, gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+			prepare: func(tt *TestCase, m *mockCreateTask) {
+				m.runner.EXPECT().GoFile(gomock.Any(), tt.wg, gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
 					func(ctx context.Context, wg *sync.WaitGroup, idTask entity.IdTask, file entity.File, f func(context.Context, *sync.WaitGroup, entity.IdTask, entity.File) error) {
 						wg.Done()
 					},
@@ -178,10 +172,9 @@ func TestRunDownload(t *testing.T) {
 			rep := NewMockCreateTaskRepository(ctrl)
 			loader := NewMockHttpLoader(ctrl)
 			runner := NewMockBackgroundRunner(ctrl)
-			r := &mockRunner{runner}
-			m := &mockCreateTask{rep}
+			m := &mockCreateTask{repo: rep, runner: runner}
 			if tt.prepare != nil {
-				tt.prepare(tt, m, r)
+				tt.prepare(tt, m)
 			}
 
 			tf := NewCreateTaskUseCase(rep, loader, runner, context.Background())
@@ -199,7 +192,7 @@ func TestRunDownload(t *testing.T) {
 func TestDownloadFile(t *testing.T) {
 	type TestCase struct {
 		name        string
-		prepare     func(tt *TestCase, m *mockCreateTask, l *mockLoader)
+		prepare     func(tt *TestCase, m *mockCreateTask)
 		ctx         context.Context
 		idTask      entity.IdTask
 		file        entity.File
@@ -209,9 +202,9 @@ func TestDownloadFile(t *testing.T) {
 	testCases := []*TestCase{
 		{
 			name: "success",
-			prepare: func(tt *TestCase, m *mockCreateTask, l *mockLoader) {
+			prepare: func(tt *TestCase, m *mockCreateTask) {
 				tt.wg.Add(1)
-				l.loader.EXPECT().Load(tt.ctx, tt.file.Url).Return([]byte("test"), nil)
+				m.loader.EXPECT().Load(tt.ctx, tt.file.Url).Return([]byte("test"), nil)
 				m.repo.EXPECT().UpdateFileData(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 			},
 			ctx:         context.Background(),
@@ -222,7 +215,7 @@ func TestDownloadFile(t *testing.T) {
 		},
 		{
 			name: "context canceled",
-			prepare: func(tt *TestCase, m *mockCreateTask, l *mockLoader) {
+			prepare: func(tt *TestCase, m *mockCreateTask) {
 				tt.wg.Add(1)
 				var cancel context.CancelFunc
 				tt.ctx, cancel = context.WithCancel(tt.ctx)
@@ -236,9 +229,9 @@ func TestDownloadFile(t *testing.T) {
 		},
 		{
 			name: "UpdateFileData error",
-			prepare: func(tt *TestCase, m *mockCreateTask, l *mockLoader) {
+			prepare: func(tt *TestCase, m *mockCreateTask) {
 				tt.wg.Add(1)
-				l.loader.EXPECT().Load(tt.ctx, tt.file.Url).Return([]byte("test"), nil)
+				m.loader.EXPECT().Load(tt.ctx, tt.file.Url).Return([]byte("test"), nil)
 				m.repo.EXPECT().UpdateFileData(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(context.DeadlineExceeded)
 			},
 			ctx:         context.Background(),
@@ -248,10 +241,24 @@ func TestDownloadFile(t *testing.T) {
 			expectedErr: context.DeadlineExceeded,
 		},
 		{
-			name: "HttpLoader.Load error",
-			prepare: func(tt *TestCase, m *mockCreateTask, l *mockLoader) {
+			name: "HttpLoader.Load error FileErrTimeout",
+			prepare: func(tt *TestCase, m *mockCreateTask) {
 				tt.wg.Add(1)
-				l.loader.EXPECT().Load(tt.ctx, tt.file.Url).Return(nil, nil)
+				m.loader.EXPECT().Load(tt.ctx, tt.file.Url).Return(nil, context.DeadlineExceeded)
+				m.repo.EXPECT().UpdateFileErr(gomock.Any(), gomock.Any(), gomock.Any(), entity.FileErrTimeout).Return(context.DeadlineExceeded)
+			},
+			ctx:         context.Background(),
+			wg:          &sync.WaitGroup{},
+			idTask:      1,
+			file:        entity.File{Url: "https://google.com"},
+			expectedErr: context.DeadlineExceeded,
+		},
+		{
+			name: "HttpLoader.Load error FileErr",
+			prepare: func(tt *TestCase, m *mockCreateTask) {
+				tt.wg.Add(1)
+				m.loader.EXPECT().Load(tt.ctx, tt.file.Url).Return(nil, errors.New("test"))
+				m.repo.EXPECT().UpdateFileErr(gomock.Any(), gomock.Any(), gomock.Any(), entity.FileErr).Return(context.DeadlineExceeded)
 			},
 			ctx:         context.Background(),
 			wg:          &sync.WaitGroup{},
@@ -268,10 +275,9 @@ func TestDownloadFile(t *testing.T) {
 			rep := NewMockCreateTaskRepository(ctrl)
 			loader := NewMockHttpLoader(ctrl)
 			runner := NewMockBackgroundRunner(ctrl)
-			m := &mockCreateTask{rep}
-			l := &mockLoader{loader}
+			m := &mockCreateTask{repo: rep, loader: loader}
 			if tt.prepare != nil {
-				tt.prepare(tt, m, l)
+				tt.prepare(tt, m)
 			}
 
 			tf := NewCreateTaskUseCase(rep, loader, runner, context.Background())

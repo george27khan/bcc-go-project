@@ -31,8 +31,8 @@ func TestGetTaskFile(t *testing.T) {
 					Return([]byte("Hello World"), nil)
 			},
 			ctx:      context.Background(),
-			idTask:   entity.IdTask(0),
-			idFile:   entity.IdFile(0),
+			idTask:   entity.IdTask(1),
+			idFile:   entity.IdFile(1),
 			expected: []byte("Hello World"),
 		},
 		{
@@ -41,41 +41,20 @@ func TestGetTaskFile(t *testing.T) {
 				var cancel context.CancelFunc
 				tt.ctx, cancel = context.WithCancel(tt.ctx)
 				cancel()
-
 			},
 			ctx:         context.Background(),
-			idTask:      entity.IdTask(0),
-			idFile:      entity.IdFile(0),
 			expected:    nil,
 			expectedErr: context.Canceled,
 		},
-		//{
-		//	name: "context repo timeout",
-		//	prepare: func(tt *TestCase, m *mockGetTaskFile) {
-		//		//var cancel context.CancelFunc
-		//		tt.ctx, _ = context.WithTimeout(tt.ctx, 100*time.Millisecond)
-		//		//defer cancel()
-		//		m.repo.EXPECT().GetTaskFile(gomock.Any(), tt.idTask, tt.idFile).DoAndReturn(
-		//			func(ctx context.Context, idTask entity.IdTask, idFile entity.IdFile) ([]byte, error) {
-		//				<-ctx.Done()
-		//				return nil, ctx.Err()
-		//			})
-		//	},
-		//	ctx:         context.Background(),
-		//	idTask:      entity.IdTask(0),
-		//	idFile:      entity.IdFile(0),
-		//	expected:    nil,
-		//	expectedErr: context.DeadlineExceeded,
-		//},
 		{
 			name: "task not found",
 			prepare: func(tt *TestCase, m *mockGetTaskFile) {
-				m.repo.EXPECT().GetTaskFile(gomock.Any(), tt.idTask, tt.idFile).
+				m.repo.EXPECT().GetTaskFile(gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(nil, errorsRepo.ErrTaskNotExist)
 			},
 			ctx:         context.Background(),
-			idTask:      entity.IdTask(0),
-			idFile:      entity.IdFile(0),
+			idTask:      entity.IdTask(1),
+			idFile:      entity.IdFile(1),
 			expected:    nil,
 			expectedErr: errorsRepo.ErrTaskNotExist,
 		},

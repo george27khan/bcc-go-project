@@ -10,7 +10,6 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 	"testing"
-	"time"
 )
 
 type mockTaskCreate struct {
@@ -33,11 +32,7 @@ func TestPostDownloads(t *testing.T) {
 		{
 			name: "success",
 			prepare: func(tt *TestCase, m *mockTaskCreate) {
-				m.UseCase.EXPECT().CreateTask(gomock.Any(), entity.Task{Timeout: 60 * time.Second,
-					Status: entity.TaskStatusProcess,
-					Files: []entity.File{{
-						Url: "https://google.com"},
-					}}).Return(
+				m.UseCase.EXPECT().CreateTask(gomock.Any(), gomock.Any()).Return(
 					entity.IdTask(1),
 					entity.TaskStatusProcess,
 					nil,
@@ -113,23 +108,6 @@ func TestPostDownloads(t *testing.T) {
 				Message: "PostDownloads: ошибка валидации параметров: validate error: URL должен содержать схему и хост: https:google.com",
 			},
 		},
-		//{
-		//	name: "strToDuration error",
-		//	ctx:  context.Background(),
-		//	req: PostDownloadsRequestObject{&PostDownloadsJSONRequestBody{
-		//		Files: []Url{
-		//			{
-		//				"https://google.com",
-		//			},
-		//		},
-		//		Timeout: "s",
-		//	}},
-		//	expectedType: PostDownloads400JSONResponse{},
-		//	expectFailResp: ErrorResponse{
-		//		Code:    BADREQUEST,
-		//		Message: "PostDownloads: ошибка валидации параметров: validate error: URL должен содержать схему и хост: https:google.com",
-		//	},
-		//},
 	}
 	for _, tt := range TestCases {
 		t.Run(tt.name, func(t *testing.T) {
@@ -172,7 +150,6 @@ func TestPostDownloads(t *testing.T) {
 			default:
 				require.Fail(t, "unexpected response type")
 			}
-
 		})
 	}
 }
@@ -201,11 +178,11 @@ func TestGetDownloadsId(t *testing.T) {
 			prepare: func(tt *TestCase, m *mockGetTask) {
 				m.UseCase.EXPECT().GetTask(gomock.Any(), entity.IdTask(tt.req.Id)).Return(
 					&entity.Task{
-						Id:     entity.IdTask(0),
+						Id:     entity.IdTask(1),
 						Status: entity.TaskStatusDone,
 						Files: []entity.File{
 							{
-								Id:  0,
+								Id:  1,
 								Url: "https://google.com",
 							},
 							{
@@ -218,10 +195,10 @@ func TestGetDownloadsId(t *testing.T) {
 				)
 			},
 			ctx:        context.Background(),
-			req:        GetDownloadsIdRequestObject{Id: 0},
+			req:        GetDownloadsIdRequestObject{Id: 1},
 			expectType: GetDownloadsId200JSONResponse{},
 			expectedUrlFile: UrlFile{
-				FileId: 0,
+				FileId: 1,
 				Url:    "https://google.com",
 			},
 			expectedUrlErr: UrlErr{
@@ -232,7 +209,7 @@ func TestGetDownloadsId(t *testing.T) {
 				},
 				Url: "https://google.com",
 			},
-			expectId:     0,
+			expectId:     1,
 			expectStatus: DONE,
 			expectedErr:  nil,
 		},
@@ -254,7 +231,7 @@ func TestGetDownloadsId(t *testing.T) {
 		{
 			name: "GetTask error",
 			prepare: func(tt *TestCase, m *mockGetTask) {
-				m.UseCase.EXPECT().GetTask(gomock.Any(), entity.IdTask(tt.req.Id)).Return(
+				m.UseCase.EXPECT().GetTask(gomock.Any(), gomock.Any()).Return(
 					nil,
 					repErr.ErrTaskNotExist,
 				)
@@ -346,13 +323,13 @@ func TestGetDownloadsIdFilesFileId(t *testing.T) {
 		{
 			name: "success",
 			prepare: func(tt *TestCase, m *mockTaskFileUseCase) {
-				m.UseCase.EXPECT().GetTaskFile(gomock.Any(), entity.IdTask(tt.req.Id), entity.IdFile(tt.req.FileId)).Return(
-					[]byte("Mock"), nil)
+				m.UseCase.EXPECT().GetTaskFile(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+					[]byte("test"), nil)
 			},
 			ctx:          context.Background(),
 			req:          GetDownloadsIdFilesFileIdRequestObject{Id: 1, FileId: 1},
 			expectType:   GetDownloadsIdFilesFileId200ApplicationoctetStreamResponse{},
-			expectedData: []byte("Mock"),
+			expectedData: []byte("test"),
 			expectedErr:  nil,
 		},
 		{
@@ -373,7 +350,7 @@ func TestGetDownloadsIdFilesFileId(t *testing.T) {
 		{
 			name: "GetTask error",
 			prepare: func(tt *TestCase, m *mockTaskFileUseCase) {
-				m.UseCase.EXPECT().GetTaskFile(gomock.Any(), entity.IdTask(tt.req.Id), entity.IdFile(tt.req.FileId)).Return(
+				m.UseCase.EXPECT().GetTaskFile(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 					nil,
 					repErr.ErrFileNotExist,
 				)

@@ -136,7 +136,7 @@ func (r *TaskRepository) GetTaskFile(ctx context.Context, idTask entity.IdTask, 
 		return []byte{}, fmt.Errorf("TaskRepository.GetTaskFile: %w", errors_repo.ErrTaskNotExist)
 	} else {
 		for _, file := range tsk.Files {
-			if file.Id == idFile {
+			if file.Id == idFile && idFile != 0 {
 				return file.Data, nil
 			}
 		}

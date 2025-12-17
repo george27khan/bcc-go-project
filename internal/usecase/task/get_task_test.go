@@ -35,7 +35,7 @@ func TestGetTask(t *testing.T) {
 					}, nil)
 			},
 			ctx:    context.Background(),
-			idTask: entity.IdTask(0),
+			idTask: entity.IdTask(1),
 			expected: &entity.Task{
 				Id:      0,
 				Timeout: 60,
@@ -51,27 +51,9 @@ func TestGetTask(t *testing.T) {
 				cancel()
 			},
 			ctx:         context.Background(),
-			idTask:      entity.IdTask(0),
 			expected:    nil,
 			expectedErr: context.Canceled,
 		},
-		//{
-		//	name: "context repo timeout",
-		//	prepare: func(tt *TestCase, m *mockGetTask) {
-		//		//var cancel context.CancelFunc
-		//		tt.ctx, _ = context.WithTimeout(tt.ctx, 100*time.Millisecond)
-		//		//defer cancel()
-		//		m.repo.EXPECT().Get(gomock.Any(), tt.idTask).DoAndReturn(
-		//			func(ctx context.Context, idTask entity.IdTask) (*entity.Task, error) {
-		//				<-ctx.Done()
-		//				return nil, ctx.Err()
-		//			})
-		//	},
-		//	ctx:         context.Background(),
-		//	idTask:      entity.IdTask(0),
-		//	expected:    nil,
-		//	expectedErr: context.DeadlineExceeded,
-		//},
 		{
 			name: "task not found",
 			prepare: func(tt *TestCase, m *mockGetTask) {
@@ -79,7 +61,7 @@ func TestGetTask(t *testing.T) {
 					Return(nil, errors_repo.ErrTaskNotExist)
 			},
 			ctx:         context.Background(),
-			idTask:      entity.IdTask(0),
+			idTask:      entity.IdTask(1),
 			expected:    nil,
 			expectedErr: errors_repo.ErrTaskNotExist,
 		},
