@@ -14,10 +14,16 @@ import (
 )
 
 //go:generate mockgen -package server -source=task_server.go -destination=mock_task_server.go
-var statusMapping = map[entity.Status]TaskStatus{
-	entity.TaskStatusProcess: PROCESS,
-	entity.TaskStatusDone:    DONE,
-}
+var (
+	statusMapping = map[entity.Status]TaskStatus{
+		entity.TaskStatusProcess: PROCESS,
+		entity.TaskStatusDone:    DONE,
+	}
+	errFileMapping = map[entity.Error]UrlErrErrorCode{
+		entity.FileErr:        UrlErrErrorCodeERROR,
+		entity.FileErrTimeout: UrlErrErrorCodeTIMEOUT,
+	}
+)
 
 type TaskCreateUseCase interface {
 	CreateTask(ctx context.Context, task entity.Task) (id entity.IdTask, status entity.Status, err error)
@@ -46,21 +52,21 @@ func NewTaskServer(taskCreateUseCase TaskCreateUseCase, taskGetUseCase TaskGetUs
 
 func resp400(msg string, err error) BadRequest400JSONResponse {
 	return BadRequest400JSONResponse{
-		Code:    BADREQUEST,
+		Code:    ErrorCodeBADREQUEST,
 		Message: fmt.Errorf("%s: %w", msg, err).Error(),
 	}
 }
 
 func resp404(msg string, err error) NotFound404JSONResponse {
 	return NotFound404JSONResponse{
-		Code:    NOTFOUND,
+		Code:    ErrorCodeNOTFOUND,
 		Message: fmt.Errorf("%s: %w", msg, err).Error(),
 	}
 }
 
 func resp500(msg string, err error) InternalServerError500JSONResponse {
 	return InternalServerError500JSONResponse{
-		Code:    INTERNALSERVERERROR,
+		Code:    ErrorCodeINTERNALSERVERERROR,
 		Message: fmt.Errorf("%s: %w", msg, err).Error(),
 	}
 }
@@ -140,11 +146,11 @@ func (s *TaskServer) GetDownloadsId(ctx context.Context, request GetDownloadsIdR
 	files := make([]DownloadsIdResponse_Files_Item, len(task.Files))
 	for i, file := range task.Files {
 		item := DownloadsIdResponse_Files_Item{}
-		if file.Error != nil {
+		if file.Error != "" {
 			urlErr := UrlErr{
 				Url: UrlString(file.Url),
 			}
-			urlErr.Error.Code = file.Error.Error()
+			urlErr.Error.Code = errFileMapping[file.Error]
 			_ = item.FromUrlErr(urlErr)
 		} else {
 			urlFile := UrlFile{

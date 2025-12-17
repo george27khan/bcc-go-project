@@ -103,7 +103,7 @@ func (r *TaskRepository) UpdateFileData(ctx context.Context, id entity.IdTask, u
 }
 
 // UpdateFileErr обновление ошибки
-func (r *TaskRepository) UpdateFileErr(ctx context.Context, id entity.IdTask, url entity.Url, fileErr error) error {
+func (r *TaskRepository) UpdateFileErr(ctx context.Context, id entity.IdTask, url entity.Url, fileErr entity.Error) error {
 	// завершение операции по контексту
 	if ctx.Err() != nil {
 		return fmt.Errorf("TaskRepository.UpdateFileErr: %w", ctx.Err())

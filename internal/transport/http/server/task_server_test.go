@@ -68,7 +68,7 @@ func TestPostDownloads(t *testing.T) {
 			req:          PostDownloadsRequestObject{},
 			expectedType: PostDownloads500JSONResponse{},
 			expectFailResp: ErrorResponse{
-				Code:    INTERNALSERVERERROR,
+				Code:    ErrorCodeINTERNALSERVERERROR,
 				Message: "PostDownloads: context canceled",
 			},
 		},
@@ -92,7 +92,7 @@ func TestPostDownloads(t *testing.T) {
 			}},
 			expectedType: PostDownloads500JSONResponse{},
 			expectFailResp: ErrorResponse{
-				Code:    INTERNALSERVERERROR,
+				Code:    ErrorCodeINTERNALSERVERERROR,
 				Message: fmt.Errorf("PostDownloads: %w", errors.New("CreateTask error")).Error(),
 			},
 		},
@@ -109,7 +109,7 @@ func TestPostDownloads(t *testing.T) {
 			}},
 			expectedType: PostDownloads400JSONResponse{},
 			expectFailResp: ErrorResponse{
-				Code:    BADREQUEST,
+				Code:    ErrorCodeBADREQUEST,
 				Message: "PostDownloads: ошибка валидации параметров: validate error: URL должен содержать схему и хост: https:google.com",
 			},
 		},
@@ -209,7 +209,7 @@ func TestGetDownloadsId(t *testing.T) {
 								Url: "https://google.com",
 							},
 							{
-								Error: errors.New("TIMEOUT"),
+								Error: entity.FileErrTimeout,
 								Url:   "https://google.com",
 							},
 						},
@@ -226,9 +226,9 @@ func TestGetDownloadsId(t *testing.T) {
 			},
 			expectedUrlErr: UrlErr{
 				Error: struct {
-					Code string `json:"code"`
+					Code UrlErrErrorCode `json:"code"`
 				}{
-					Code: "TIMEOUT",
+					Code: UrlErrErrorCodeTIMEOUT,
 				},
 				Url: "https://google.com",
 			},
@@ -247,7 +247,7 @@ func TestGetDownloadsId(t *testing.T) {
 			req:        GetDownloadsIdRequestObject{},
 			expectType: GetDownloadsId500JSONResponse{},
 			expectFailResp: ErrorResponse{
-				Code:    INTERNALSERVERERROR,
+				Code:    ErrorCodeINTERNALSERVERERROR,
 				Message: "GetDownloadsId: context canceled",
 			},
 		},
@@ -263,7 +263,7 @@ func TestGetDownloadsId(t *testing.T) {
 			req:        GetDownloadsIdRequestObject{},
 			expectType: GetDownloadsId404JSONResponse{},
 			expectFailResp: ErrorResponse{
-				Code:    NOTFOUND,
+				Code:    ErrorCodeNOTFOUND,
 				Message: fmt.Errorf("GetDownloadsId: %w", repErr.ErrTaskNotExist).Error(),
 			},
 		},
@@ -366,7 +366,7 @@ func TestGetDownloadsIdFilesFileId(t *testing.T) {
 			req:        GetDownloadsIdFilesFileIdRequestObject{Id: 1, FileId: 1},
 			expectType: GetDownloadsIdFilesFileId500JSONResponse{},
 			expectFailResp: ErrorResponse{
-				Code:    INTERNALSERVERERROR,
+				Code:    ErrorCodeINTERNALSERVERERROR,
 				Message: "GetDownloadsIdFilesFileId: context canceled",
 			},
 		},
@@ -382,7 +382,7 @@ func TestGetDownloadsIdFilesFileId(t *testing.T) {
 			req:        GetDownloadsIdFilesFileIdRequestObject{Id: 1, FileId: 1},
 			expectType: GetDownloadsId404JSONResponse{},
 			expectFailResp: ErrorResponse{
-				Code:    NOTFOUND,
+				Code:    ErrorCodeNOTFOUND,
 				Message: fmt.Errorf("GetDownloadsIdFilesFileId: %w", repErr.ErrFileNotExist).Error(),
 			},
 		},

@@ -66,7 +66,7 @@ func (mr *MockCreateTaskRepositoryMockRecorder) UpdateFileData(ctx, id, url, dat
 }
 
 // UpdateFileErr mocks base method.
-func (m *MockCreateTaskRepository) UpdateFileErr(ctx context.Context, id entity.IdTask, url entity.Url, fileErr error) error {
+func (m *MockCreateTaskRepository) UpdateFileErr(ctx context.Context, id entity.IdTask, url entity.Url, fileErr entity.Error) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateFileErr", ctx, id, url, fileErr)
 	ret0, _ := ret[0].(error)
@@ -117,7 +117,7 @@ func (m *MockBackgroundRunner) EXPECT() *MockBackgroundRunnerMockRecorder {
 }
 
 // GoFile mocks base method.
-func (m *MockBackgroundRunner) GoFile(ctx context.Context, wg *sync.WaitGroup, idTask entity.IdTask, file entity.File, f func(context.Context, *sync.WaitGroup, entity.IdTask, entity.File)) {
+func (m *MockBackgroundRunner) GoFile(ctx context.Context, wg *sync.WaitGroup, idTask entity.IdTask, file entity.File, f func(context.Context, *sync.WaitGroup, entity.IdTask, entity.File) error) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "GoFile", ctx, wg, idTask, file, f)
 }
@@ -129,7 +129,7 @@ func (mr *MockBackgroundRunnerMockRecorder) GoFile(ctx, wg, idTask, file, f inte
 }
 
 // GoTask mocks base method.
-func (m *MockBackgroundRunner) GoTask(ctx context.Context, task entity.Task, f func(context.Context, entity.Task)) {
+func (m *MockBackgroundRunner) GoTask(ctx context.Context, task entity.Task, f func(context.Context, *sync.WaitGroup, entity.Task) error) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "GoTask", ctx, task, f)
 }

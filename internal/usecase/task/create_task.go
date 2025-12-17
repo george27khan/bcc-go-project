@@ -3,6 +3,7 @@ package task
 import (
 	"bcc-go-project/internal/domain/entity"
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"sync"
@@ -16,12 +17,12 @@ type CreateTaskRepository interface {
 	Create(ctx context.Context, task entity.Task) (id entity.IdTask, err error)
 	UpdateStatus(ctx context.Context, id entity.IdTask, status entity.Status) error
 	UpdateFileData(ctx context.Context, id entity.IdTask, url entity.Url, data []byte) error
-	UpdateFileErr(ctx context.Context, id entity.IdTask, url entity.Url, fileErr error) error
+	UpdateFileErr(ctx context.Context, id entity.IdTask, url entity.Url, fileErr entity.Error) error
 }
 
 type BackgroundRunner interface {
-	GoTask(ctx context.Context, task entity.Task, f func(context.Context, *sync.WaitGroup, entity.Task))
-	GoFile(ctx context.Context, wg *sync.WaitGroup, idTask entity.IdTask, file entity.File, f func(context.Context, *sync.WaitGroup, entity.IdTask, entity.File))
+	GoTask(ctx context.Context, task entity.Task, f func(context.Context, *sync.WaitGroup, entity.Task) error)
+	GoFile(ctx context.Context, wg *sync.WaitGroup, idTask entity.IdTask, file entity.File, f func(context.Context, *sync.WaitGroup, entity.IdTask, entity.File) error)
 }
 
 // AsyncRunner реализация асинхронного запуска загрузки
@@ -29,11 +30,22 @@ type AsyncRunner struct {
 	WgRoot *sync.WaitGroup
 }
 
-func (ar *AsyncRunner) GoTask(ctx context.Context, task entity.Task, f func(context.Context, *sync.WaitGroup, entity.Task)) {
+func (ar *AsyncRunner) GoTask(ctx context.Context, task entity.Task, f func(context.Context, *sync.WaitGroup, entity.Task) error) {
 	go f(ctx, ar.WgRoot, task)
 }
-func (ar *AsyncRunner) GoFile(ctx context.Context, wg *sync.WaitGroup, idTask entity.IdTask, file entity.File, f func(context.Context, *sync.WaitGroup, entity.IdTask, entity.File)) {
+func (ar *AsyncRunner) GoFile(ctx context.Context, wg *sync.WaitGroup, idTask entity.IdTask, file entity.File, f func(context.Context, *sync.WaitGroup, entity.IdTask, entity.File) error) {
 	go f(ctx, wg, idTask, file)
+}
+
+// SyncRunner реализация синхронного запуска загрузки для тестов
+type SyncRunner struct{}
+
+func (sr *SyncRunner) GoTask(ctx context.Context, object entity.Task, f func(context.Context, *sync.WaitGroup, entity.Task) error) {
+	f(ctx, &sync.WaitGroup{}, object)
+}
+func (sr *SyncRunner) GoFile(ctx context.Context, wg *sync.WaitGroup, idTask entity.IdTask, file entity.File,
+	f func(context.Context, *sync.WaitGroup, entity.IdTask, entity.File) error) {
+	f(ctx, wg, idTask, file)
 }
 
 type HttpLoader interface {
@@ -77,7 +89,7 @@ func (ts *CreateTaskUseCase) CreateTask(ctx context.Context, task entity.Task) (
 }
 
 // RunDownload запуск загрузок
-func (ts *CreateTaskUseCase) RunDownload(ctx context.Context, wgRoot *sync.WaitGroup, task entity.Task) {
+func (ts *CreateTaskUseCase) RunDownload(ctx context.Context, wgRoot *sync.WaitGroup, task entity.Task) error {
 	wgRoot.Add(1)
 	defer wgRoot.Done()
 	wg := &sync.WaitGroup{}
@@ -85,9 +97,9 @@ func (ts *CreateTaskUseCase) RunDownload(ctx context.Context, wgRoot *sync.WaitG
 	loadCtx, cancel := context.WithTimeout(ctx, task.Timeout*time.Second) // от него создаем контекст для загрузчиков с общим таймаутом таска
 	defer cancel()
 	for _, file := range task.Files {
-		if ctx.Err() != nil {
+		if loadCtx.Err() != nil {
 			log.Printf("RunDownload завершен по контексту: %v", ctx.Err())
-			return
+			return loadCtx.Err()
 		}
 		//запускаем скачивание файлов асинхронно
 		wg.Add(1)
@@ -97,33 +109,44 @@ func (ts *CreateTaskUseCase) RunDownload(ctx context.Context, wgRoot *sync.WaitG
 	wg.Wait()
 	ctxRep, cancelRep := context.WithTimeout(loadCtx, repCtxTimeout)
 	defer cancelRep()
-	err := ts.Repository.UpdateStatus(ctxRep, task.Id, entity.TaskStatusDone)
-	if err != nil {
+
+	if err := ts.Repository.UpdateStatus(ctxRep, task.Id, entity.TaskStatusDone); err != nil {
 		log.Printf("CreateTask.UpdateStatus taskId=%v: %s", task.Id, err)
+		return err
 	} else {
 		log.Printf("Загрузка таска завершена taskId=%v", task.Id)
+		return nil
 	}
 }
 
 // DownloadFile запуск скачивания файла
-func (ts *CreateTaskUseCase) DownloadFile(ctx context.Context, wg *sync.WaitGroup, idTask entity.IdTask, file entity.File) {
+func (ts *CreateTaskUseCase) DownloadFile(ctx context.Context, wg *sync.WaitGroup, idTask entity.IdTask, file entity.File) error {
 	defer wg.Done()
 	if ctx.Err() != nil {
 		log.Printf("DownloadFile завершен по контексту: %v", ctx.Err())
-		return
+		return ctx.Err()
 	}
 	//time.Sleep(60 * time.Second)
 	if data, err := ts.HttpLoader.Load(ctx, file.Url); err != nil {
-		file.Error = err
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			file.Error = entity.FileErrTimeout
+		} else {
+			file.Error = entity.FileErr
+		}
+		log.Printf("Ошибка загрузки файла taskId=%v; url=%s : %s", idTask, file.Url, err)
 		ctxRep, cancelRep := context.WithTimeout(ctx, repCtxTimeout)
 		defer cancelRep()
-		_ = ts.Repository.UpdateFileErr(ctxRep, idTask, file.Url, file.Error)
-		log.Printf("Ошибка загрузки файла taskId=%v; url=%s : %s", idTask, file.Url, err)
+		if err = ts.Repository.UpdateFileErr(ctxRep, idTask, file.Url, file.Error); err != nil {
+			return err
+		}
 	} else {
 		file.Data = data
 		ctxRep, cancelRep := context.WithTimeout(ctx, repCtxTimeout)
-		defer cancelRep()
-		_ = ts.Repository.UpdateFileData(ctxRep, idTask, file.Url, file.Data)
 		log.Printf("Файл загружен taskId=%v; url=%s", idTask, file.Url)
+		defer cancelRep()
+		if err = ts.Repository.UpdateFileData(ctxRep, idTask, file.Url, file.Data); err != nil {
+			return err
+		}
 	}
+	return nil
 }

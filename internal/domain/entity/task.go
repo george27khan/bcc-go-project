@@ -5,6 +5,8 @@ import "time"
 const (
 	TaskStatusProcess Status = "PROCESS"
 	TaskStatusDone    Status = "DONE"
+	FileErrTimeout    Error  = "TIMEOUT"
+	FileErr           Error  = "ERROR"
 )
 
 type (
@@ -13,6 +15,7 @@ type (
 type IdFile int
 type Url string
 type Status string
+type Error string
 
 type Task struct {
 	Id      IdTask
@@ -25,10 +28,9 @@ type File struct {
 	Id    IdFile
 	Data  []byte
 	Url   Url
-	Error error
+	Error Error
 }
 
-// NewTask
 func NewTask(timeout time.Duration, urls []Url) Task {
 	files := make([]File, len(urls))
 	for i, url := range urls {
