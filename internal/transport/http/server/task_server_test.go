@@ -2,7 +2,7 @@ package server
 
 import (
 	"bcc-go-project/internal/domain/entity"
-	rep_err "bcc-go-project/internal/infrastructure/repository/errors_repo"
+	repErr "bcc-go-project/internal/infrastructure/repository/errors_repo"
 	"bufio"
 	"context"
 	"errors"
@@ -36,7 +36,7 @@ func TestPostDownloads(t *testing.T) {
 				m.UseCase.EXPECT().CreateTask(gomock.Any(), entity.Task{Timeout: 60 * time.Second,
 					Status: entity.TaskStatusProcess,
 					Files: []entity.File{{
-						Url: entity.Url("https://google.com")},
+						Url: "https://google.com"},
 					}}).Return(
 					entity.IdTask(1),
 					entity.TaskStatusProcess,
@@ -53,7 +53,7 @@ func TestPostDownloads(t *testing.T) {
 				Timeout: "60s",
 			}},
 			expectedType: PostDownloads201JSONResponse{},
-			expectId:     IdTask(1),
+			expectId:     1,
 			expectStatus: PROCESS,
 			expectedErr:  nil,
 		},
@@ -206,11 +206,11 @@ func TestGetDownloadsId(t *testing.T) {
 						Files: []entity.File{
 							{
 								Id:  0,
-								Url: entity.Url("https://google.com"),
+								Url: "https://google.com",
 							},
 							{
 								Error: errors.New("TIMEOUT"),
-								Url:   entity.Url("https://google.com"),
+								Url:   "https://google.com",
 							},
 						},
 					},
@@ -232,7 +232,7 @@ func TestGetDownloadsId(t *testing.T) {
 				},
 				Url: "https://google.com",
 			},
-			expectId:     IdTask(0),
+			expectId:     0,
 			expectStatus: DONE,
 			expectedErr:  nil,
 		},
@@ -256,7 +256,7 @@ func TestGetDownloadsId(t *testing.T) {
 			prepare: func(tt *TestCase, m *mockGetTask) {
 				m.UseCase.EXPECT().GetTask(gomock.Any(), entity.IdTask(tt.req.Id)).Return(
 					nil,
-					rep_err.ErrTaskNotExist,
+					repErr.ErrTaskNotExist,
 				)
 			},
 			ctx:        context.Background(),
@@ -264,7 +264,7 @@ func TestGetDownloadsId(t *testing.T) {
 			expectType: GetDownloadsId404JSONResponse{},
 			expectFailResp: ErrorResponse{
 				Code:    NOTFOUND,
-				Message: fmt.Errorf("GetDownloadsId: %w", rep_err.ErrTaskNotExist).Error(),
+				Message: fmt.Errorf("GetDownloadsId: %w", repErr.ErrTaskNotExist).Error(),
 			},
 		},
 	}
@@ -375,7 +375,7 @@ func TestGetDownloadsIdFilesFileId(t *testing.T) {
 			prepare: func(tt *TestCase, m *mockTaskFileUseCase) {
 				m.UseCase.EXPECT().GetTaskFile(gomock.Any(), entity.IdTask(tt.req.Id), entity.IdFile(tt.req.FileId)).Return(
 					nil,
-					rep_err.ErrFileNotExist,
+					repErr.ErrFileNotExist,
 				)
 			},
 			ctx:        context.Background(),
@@ -383,7 +383,7 @@ func TestGetDownloadsIdFilesFileId(t *testing.T) {
 			expectType: GetDownloadsId404JSONResponse{},
 			expectFailResp: ErrorResponse{
 				Code:    NOTFOUND,
-				Message: fmt.Errorf("GetDownloadsIdFilesFileId: %w", rep_err.ErrFileNotExist).Error(),
+				Message: fmt.Errorf("GetDownloadsIdFilesFileId: %w", repErr.ErrFileNotExist).Error(),
 			},
 		},
 	}

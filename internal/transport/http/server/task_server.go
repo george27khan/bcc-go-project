@@ -2,7 +2,7 @@ package server
 
 import (
 	"bcc-go-project/internal/domain/entity"
-	rep_err "bcc-go-project/internal/infrastructure/repository/errors_repo"
+	repErr "bcc-go-project/internal/infrastructure/repository/errors_repo"
 	"bytes"
 	"context"
 	"errors"
@@ -93,17 +93,7 @@ func strToDuration(timeStr string) (time.Duration, error) {
 	return time.Second * time.Duration(timeout), nil
 }
 
-// Реализуем метод конкретного эндпоинта
-// POST localhost:8080/downloads
-/*
-{
-"files": [
-{"url": "https://google.com"},
-{"url": "https://somehost.com/test.pdf"}
-],
-"timeout": "60s"
-}
-*/
+// PostDownloads запуск процесса загрузки
 func (s *TaskServer) PostDownloads(ctx context.Context, request PostDownloadsRequestObject) (PostDownloadsResponseObject, error) {
 	if ctx.Err() != nil {
 		return PostDownloads500JSONResponse{resp500("PostDownloads", ctx.Err())}, nil
@@ -142,7 +132,7 @@ func (s *TaskServer) GetDownloadsId(ctx context.Context, request GetDownloadsIdR
 	}
 	task, err := s.TaskGetUseCase.GetTask(ctx, entity.IdTask(request.Id))
 	if err != nil {
-		if errors.Is(err, rep_err.ErrTaskNotExist) {
+		if errors.Is(err, repErr.ErrTaskNotExist) {
 			return GetDownloadsId404JSONResponse{resp404("GetDownloadsId", err)}, nil
 		}
 	}
@@ -180,7 +170,7 @@ func (s *TaskServer) GetDownloadsIdFilesFileId(ctx context.Context, request GetD
 	}
 	data, err := s.TaskFileUseCase.GetTaskFile(ctx, entity.IdTask(request.Id), entity.IdFile(request.FileId))
 	if err != nil {
-		if errors.Is(err, rep_err.ErrTaskNotExist) || errors.Is(err, rep_err.ErrFileNotExist) {
+		if errors.Is(err, repErr.ErrTaskNotExist) || errors.Is(err, repErr.ErrFileNotExist) {
 			return GetDownloadsIdFilesFileId404JSONResponse{resp404("GetDownloadsIdFilesFileId", err)}, nil
 		}
 	}

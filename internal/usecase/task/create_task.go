@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+const repCtxTimeout = 100 * time.Millisecond // Время жизни контекста для запроса в бд, в идеале вынести в настройки
+
 //go:generate mockgen -package task -source=create_task.go -destination=mock_create_task.go
 type CreateTaskRepository interface {
 	Create(ctx context.Context, task entity.Task) (id entity.IdTask, err error)
@@ -22,6 +24,7 @@ type BackgroundRunner interface {
 	GoFile(ctx context.Context, wg *sync.WaitGroup, idTask entity.IdTask, file entity.File, f func(context.Context, *sync.WaitGroup, entity.IdTask, entity.File))
 }
 
+// AsyncRunner реализация асинхронного запуска загрузки
 type AsyncRunner struct {
 	WgRoot *sync.WaitGroup
 }
@@ -29,18 +32,8 @@ type AsyncRunner struct {
 func (ar *AsyncRunner) GoTask(ctx context.Context, task entity.Task, f func(context.Context, *sync.WaitGroup, entity.Task)) {
 	go f(ctx, ar.WgRoot, task)
 }
-
 func (ar *AsyncRunner) GoFile(ctx context.Context, wg *sync.WaitGroup, idTask entity.IdTask, file entity.File, f func(context.Context, *sync.WaitGroup, entity.IdTask, entity.File)) {
 	go f(ctx, wg, idTask, file)
-}
-
-type SyncRunner struct{}
-
-func (sr *SyncRunner) GoTask(ctx context.Context, object entity.Task, f func(context.Context, entity.Task)) {
-	f(ctx, object)
-}
-func (ar *SyncRunner) GoFile(ctx context.Context, wg *sync.WaitGroup, idTask entity.IdTask, file entity.File, f func(context.Context, *sync.WaitGroup, entity.IdTask, entity.File)) {
-	f(ctx, wg, idTask, file)
 }
 
 type HttpLoader interface {
@@ -72,15 +65,14 @@ func (ts *CreateTaskUseCase) CreateTask(ctx context.Context, task entity.Task) (
 	if ctx.Err() != nil {
 		return 0, "", fmt.Errorf("TaskService.CreateTask: %w", ctx.Err())
 	}
-	//создаем таск в репо
-	idTask, err = ts.Repository.Create(ctx, task)
+
+	idTask, err = ts.Repository.Create(ctx, task) //создаем таск в репо
 	if err != nil {
 		return 0, "", fmt.Errorf("TaskService.CreateTask: %w", err)
 	}
 
 	task.Id = idTask
-	ts.Runner.GoTask(ts.RootCtx, task, ts.RunDownload)
-	// отправляем ответ
+	ts.Runner.GoTask(ts.RootCtx, task, ts.RunDownload) // передаем корневой контекст
 	return task.Id, task.Status, nil
 }
 
@@ -93,13 +85,17 @@ func (ts *CreateTaskUseCase) RunDownload(ctx context.Context, wgRoot *sync.WaitG
 	loadCtx, cancel := context.WithTimeout(ctx, task.Timeout*time.Second) // от него создаем контекст для загрузчиков с общим таймаутом таска
 	defer cancel()
 	for _, file := range task.Files {
+		if ctx.Err() != nil {
+			log.Printf("RunDownload завершен по контексту: %v", ctx.Err())
+			return
+		}
 		//запускаем скачивание файлов асинхронно
 		wg.Add(1)
 		ts.Runner.GoFile(loadCtx, wg, task.Id, file, ts.DownloadFile)
 	}
 	//ждем завершение загрузок или таймаута
 	wg.Wait()
-	ctxRep, cancelRep := context.WithTimeout(loadCtx, 100*time.Millisecond)
+	ctxRep, cancelRep := context.WithTimeout(loadCtx, repCtxTimeout)
 	defer cancelRep()
 	err := ts.Repository.UpdateStatus(ctxRep, task.Id, entity.TaskStatusDone)
 	if err != nil {
@@ -112,16 +108,20 @@ func (ts *CreateTaskUseCase) RunDownload(ctx context.Context, wgRoot *sync.WaitG
 // DownloadFile запуск скачивания файла
 func (ts *CreateTaskUseCase) DownloadFile(ctx context.Context, wg *sync.WaitGroup, idTask entity.IdTask, file entity.File) {
 	defer wg.Done()
+	if ctx.Err() != nil {
+		log.Printf("DownloadFile завершен по контексту: %v", ctx.Err())
+		return
+	}
 	//time.Sleep(60 * time.Second)
 	if data, err := ts.HttpLoader.Load(ctx, file.Url); err != nil {
 		file.Error = err
-		ctxRep, cancelRep := context.WithTimeout(ctx, 100*time.Millisecond)
+		ctxRep, cancelRep := context.WithTimeout(ctx, repCtxTimeout)
 		defer cancelRep()
 		_ = ts.Repository.UpdateFileErr(ctxRep, idTask, file.Url, file.Error)
 		log.Printf("Ошибка загрузки файла taskId=%v; url=%s : %s", idTask, file.Url, err)
 	} else {
 		file.Data = data
-		ctxRep, cancelRep := context.WithTimeout(ctx, 100*time.Millisecond)
+		ctxRep, cancelRep := context.WithTimeout(ctx, repCtxTimeout)
 		defer cancelRep()
 		_ = ts.Repository.UpdateFileData(ctxRep, idTask, file.Url, file.Data)
 		log.Printf("Файл загружен taskId=%v; url=%s", idTask, file.Url)

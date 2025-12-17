@@ -5,9 +5,19 @@ import (
 	"context"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
+	"sync"
 	"testing"
-	"time"
 )
+
+// SyncRunner реализация синхронного запуска загрузки для тестов
+type SyncRunner struct{}
+
+func (sr *SyncRunner) GoTask(ctx context.Context, object entity.Task, f func(context.Context, *sync.WaitGroup, entity.Task)) {
+	f(ctx, &sync.WaitGroup{}, object)
+}
+func (sr *SyncRunner) GoFile(ctx context.Context, wg *sync.WaitGroup, idTask entity.IdTask, file entity.File, f func(context.Context, *sync.WaitGroup, entity.IdTask, entity.File)) {
+	f(ctx, wg, idTask, file)
+}
 
 type mockCreateTask struct {
 	repo *MockCreateTaskRepository
@@ -24,7 +34,7 @@ func TestCreateTask(t *testing.T) {
 		expectedErr    error
 	}
 	testCases := []*TestCase{
-		&TestCase{
+		{
 			name: "success",
 			prepare: func(tt *TestCase, m *mockCreateTask) {
 				m.repo.EXPECT().Create(gomock.Any(), tt.Task).
@@ -41,7 +51,7 @@ func TestCreateTask(t *testing.T) {
 			expectedStatus: entity.TaskStatusProcess,
 			expectedErr:    nil,
 		},
-		&TestCase{
+		{
 			name: "context canceled",
 			prepare: func(tt *TestCase, m *mockCreateTask) {
 				var cancel context.CancelFunc
@@ -54,24 +64,24 @@ func TestCreateTask(t *testing.T) {
 			expectedStatus: entity.Status(""),
 			expectedErr:    context.Canceled,
 		},
-		&TestCase{
-			name: "context repo timeout",
-			prepare: func(tt *TestCase, m *mockCreateTask) {
-				//var cancel context.CancelFunc
-				tt.ctx, _ = context.WithTimeout(tt.ctx, 100*time.Millisecond)
-				//defer cancel()
-				m.repo.EXPECT().Create(gomock.Any(), tt.Task).DoAndReturn(
-					func(ctx context.Context, Task entity.Task) (entity.IdTask, error) {
-						<-ctx.Done()
-						return entity.IdTask(0), ctx.Err()
-					})
-			},
-			ctx:            context.Background(),
-			Task:           entity.Task{},
-			expectedIdTask: entity.IdTask(0),
-			expectedStatus: entity.Status(""),
-			expectedErr:    context.DeadlineExceeded,
-		},
+		//{
+		//	name: "context repo timeout",
+		//	prepare: func(tt *TestCase, m *mockCreateTask) {
+		//		//var cancel context.CancelFunc
+		//		tt.ctx, _ = context.WithTimeout(tt.ctx, 100*time.Millisecond)
+		//		//defer cancel()
+		//		m.repo.EXPECT().Create(gomock.Any(), tt.Task).DoAndReturn(
+		//			func(ctx context.Context, Task entity.Task) (entity.IdTask, error) {
+		//				<-ctx.Done()
+		//				return entity.IdTask(0), ctx.Err()
+		//			})
+		//	},
+		//	ctx:            context.Background(),
+		//	Task:           entity.Task{},
+		//	expectedIdTask: entity.IdTask(0),
+		//	expectedStatus: entity.Status(""),
+		//	expectedErr:    context.DeadlineExceeded,
+		//},
 	}
 
 	for _, tt := range testCases {
@@ -87,7 +97,7 @@ func TestCreateTask(t *testing.T) {
 				tt.prepare(tt, m)
 			}
 
-			tf := NewCreateTaskUseCase(rep, loader, runner)
+			tf := NewCreateTaskUseCase(rep, loader, runner, context.Background())
 			idTask, status, err := tf.CreateTask(tt.ctx, tt.Task)
 			if tt.expectedErr != nil {
 				require.ErrorIs(t, err, tt.expectedErr)

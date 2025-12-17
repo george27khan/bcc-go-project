@@ -4,7 +4,6 @@ import (
 	"bcc-go-project/internal/domain/entity"
 	"context"
 	"fmt"
-	"time"
 )
 
 //go:generate mockgen -package task -source=get_task.go -destination=mock_get_task.go
@@ -28,7 +27,7 @@ func (ts *GetTaskUseCase) GetTask(ctx context.Context, id entity.IdTask) (*entit
 		return nil, fmt.Errorf("TaskService.GetTask: %w", ctx.Err())
 	}
 	//получаем таск
-	ctx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(ctx, repCtxTimeout)
 	defer cancel()
 	task, err := ts.Repository.Get(ctx, id)
 	if err != nil {
