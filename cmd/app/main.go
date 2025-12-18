@@ -69,7 +69,7 @@ func main() {
 	go func() {
 		log.Printf("Start server on port 8080")
 		if err := s.ListenAndServe(); err != nil && errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("listen error: %s", err)
+			log.Printf("listen error: %s", err)
 		}
 	}()
 
