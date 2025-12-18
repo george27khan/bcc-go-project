@@ -1,0 +1,2240 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>app: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">bcc-go-project/cmd/app/main.go (0.0%)</option>
+				
+				<option value="file1">bcc-go-project/internal/domain/entity/task.go (0.0%)</option>
+				
+				<option value="file2">bcc-go-project/internal/infrastructure/adatper/http_loader/loader.go (0.0%)</option>
+				
+				<option value="file3">bcc-go-project/internal/infrastructure/repository/local/task_repo.go (0.0%)</option>
+				
+				<option value="file4">bcc-go-project/internal/pkg/detach_context/detach_context.go (0.0%)</option>
+				
+				<option value="file5">bcc-go-project/internal/transport/http/server/error_func.go (0.0%)</option>
+				
+				<option value="file6">bcc-go-project/internal/transport/http/server/middleware/middleware.go (0.0%)</option>
+				
+				<option value="file7">bcc-go-project/internal/transport/http/server/mock_task_server.go (100.0%)</option>
+				
+				<option value="file8">bcc-go-project/internal/transport/http/server/oapi.server.gen.go (10.0%)</option>
+				
+				<option value="file9">bcc-go-project/internal/transport/http/server/task_server.go (96.4%)</option>
+				
+				<option value="file10">bcc-go-project/internal/usecase/task/create_task.go (92.3%)</option>
+				
+				<option value="file11">bcc-go-project/internal/usecase/task/get_task.go (100.0%)</option>
+				
+				<option value="file12">bcc-go-project/internal/usecase/task/get_task_file.go (100.0%)</option>
+				
+				<option value="file13">bcc-go-project/internal/usecase/task/mock_create_task.go (100.0%)</option>
+				
+				<option value="file14">bcc-go-project/internal/usecase/task/mock_get_task.go (100.0%)</option>
+				
+				<option value="file15">bcc-go-project/internal/usecase/task/mock_get_task_file.go (100.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package main
+
+import (
+        "bcc-go-project/internal/infrastructure/adatper/http_loader"
+        fileRep "bcc-go-project/internal/infrastructure/repository/local"
+        "bcc-go-project/internal/transport/http/server"
+        "bcc-go-project/internal/transport/http/server/middleware"
+        "bcc-go-project/internal/usecase/task"
+        "context"
+        "errors"
+        "github.com/getkin/kin-openapi/openapi3filter"
+        "github.com/go-chi/chi/v5"
+        mw "github.com/oapi-codegen/nethttp-middleware"
+        "log"
+        "net/http"
+        "os"
+        "os/signal"
+        "sync"
+        "syscall"
+        "time"
+)
+
+func main() <span class="cov0" title="0">{
+        // глобальный контекст для отмены фоновых загрузок при остановке приложения
+        rootCtx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
+        defer stop()
+
+        // Для ожидания завершения фоновых загрузок при остановке приложения
+        wgBackRun := &amp;sync.WaitGroup{}
+
+        r := chi.NewRouter()
+
+        spec, err := server.GetSwagger()
+        if err != nil </span><span class="cov0" title="0">{
+                log.Printf("Ошибка Swagger: %v", err)
+                return
+        }</span>
+
+        // Middleware проверки запросов
+        <span class="cov0" title="0">r.Use(mw.OapiRequestValidatorWithOptions(
+                spec, // Добавление валидатора сваггера
+                &amp;mw.Options{
+                        Options:      openapi3filter.Options{},
+                        ErrorHandler: server.SwaggerErrorHandlerFunc, // добавление обработчика ошибок на уровне проверки сваггером
+                },
+        ))
+        taskRep := fileRep.NewTaskRepository()                                           // репозиторий
+        loader := http_loader.NewHttpLoader(&amp;http.Client{})                              // загрузчик
+        runner := &amp;task.AsyncRunner{WgRoot: wgBackRun}                                   // запуск загрузки в фоне
+        taskCreateUseCase := task.NewCreateTaskUseCase(taskRep, loader, runner, rootCtx) // юзкейс
+        taskGetUseCase := task.NewGetTaskUseCase(taskRep)                                // юзкейс
+        taskFileUseCase := task.NewTaskFileUseCase(taskRep)                              // юзкейс
+        taskSrv := server.NewTaskServer(taskCreateUseCase, taskGetUseCase, taskFileUseCase)
+
+        // Регистрируем все эндпоинты из OpenAPI
+        taskSrvStrict := server.NewStrictHandlerWithOptions(
+                taskSrv,
+                []server.StrictMiddlewareFunc{middleware.AddRequestId, middleware.PanicRecover},
+                server.StrictHTTPServerOptions{
+                        RequestErrorHandlerFunc:  server.RequestErrorHandlerFunc,
+                        ResponseErrorHandlerFunc: server.ResponseErrorHandlerFunc,
+                },
+        )
+        server.HandlerFromMux(taskSrvStrict, r)
+        s := &amp;http.Server{
+                Addr:    ":8080",
+                Handler: r,
+        }
+        go func() </span><span class="cov0" title="0">{
+                log.Printf("Start server on port 8080")
+                if err := s.ListenAndServe(); err != nil &amp;&amp; errors.Is(err, http.ErrServerClosed) </span><span class="cov0" title="0">{
+                        log.Printf("listen error: %s", err)
+                }</span>
+        }()
+
+        //gracefull shutdown
+        <span class="cov0" title="0">&lt;-rootCtx.Done() // ожидание сигнала завершения
+        log.Println("Start gracefull shutdown ...")
+        ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+        defer cancel()
+        if err := s.Shutdown(ctx); err != nil </span><span class="cov0" title="0">{
+                log.Fatal("Server Shutdown err:", err)
+        }</span>
+        <span class="cov0" title="0">log.Println("Server exiting")
+
+        wgBackRun.Wait() // Ожидаем завершение загрузок, теоретически не должно зависнуть т.к. загрузки с таймаутом
+        log.Println("Background stoped")</span>
+
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package entity
+
+import "time"
+
+const (
+        TaskStatusProcess Status = "PROCESS"
+        TaskStatusDone    Status = "DONE"
+        FileErrTimeout    Error  = "TIMEOUT"
+        FileErr           Error  = "ERROR"
+)
+
+type (
+        IdTask int
+)
+type IdFile int
+type Url string
+type Status string
+type Error string
+
+type Task struct {
+        Id      IdTask
+        Timeout time.Duration
+        Status  Status
+        Files   []File
+}
+
+type File struct {
+        Id    IdFile
+        Data  []byte
+        Url   Url
+        Error Error
+}
+
+func NewTask(timeout time.Duration, urls []Url) Task <span class="cov0" title="0">{
+        files := make([]File, len(urls))
+        for i, url := range urls </span><span class="cov0" title="0">{
+                files[i] = File{Url: url}
+        }</span>
+        <span class="cov0" title="0">return Task{
+                Timeout: timeout,
+                Status:  TaskStatusProcess,
+                Files:   files,
+        }</span>
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package http_loader
+
+import (
+        "bcc-go-project/internal/domain/entity"
+        "context"
+        "fmt"
+        "io"
+        "net/http"
+)
+
+type HttpClient interface {
+        Do(req *http.Request) (*http.Response, error)
+}
+
+type HttpLoader struct {
+        client HttpClient
+}
+
+func NewHttpLoader(client HttpClient) *HttpLoader <span class="cov0" title="0">{
+        return &amp;HttpLoader{client: client}
+}</span>
+
+func (l *HttpLoader) Load(ctx context.Context, url entity.Url) ([]byte, error) <span class="cov0" title="0">{
+        req, err := http.NewRequestWithContext(ctx, http.MethodGet, string(url), nil)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("HttpLoader.Load error: %w", err)
+        }</span>
+        <span class="cov0" title="0">resp, err := l.client.Do(req)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("HttpLoader.Load error: %w", err)
+        }</span>
+        <span class="cov0" title="0">defer resp.Body.Close()
+        data, err := io.ReadAll(resp.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("HttpLoader.Load error: %w", err)
+        }</span>
+        <span class="cov0" title="0">return data, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package local
+
+import (
+        "bcc-go-project/internal/domain/entity"
+        "bcc-go-project/internal/infrastructure/repository/errors_repo"
+        "bcc-go-project/internal/usecase/task"
+        "context"
+        "fmt"
+        "sync"
+)
+
+var (
+        _ task.CreateTaskRepository = (*TaskRepository)(nil)
+        _ task.GetTaskRepository    = (*TaskRepository)(nil)
+        _ task.TaskFileRepository   = (*TaskRepository)(nil)
+)
+
+type TaskRepository struct {
+        tasks  map[entity.IdTask]entity.Task
+        mu     *sync.RWMutex
+        idTask entity.IdTask
+        idFile entity.IdFile
+}
+
+func NewTaskRepository() *TaskRepository <span class="cov0" title="0">{
+        return &amp;TaskRepository{
+                tasks:  make(map[entity.IdTask]entity.Task, 100),
+                mu:     &amp;sync.RWMutex{},
+                idFile: entity.IdFile(1),
+                idTask: entity.IdTask(1),
+        }
+}</span>
+
+// Create создание таска в локальном хранилище
+func (r *TaskRepository) Create(ctx context.Context, task entity.Task) (id entity.IdTask, err error) <span class="cov0" title="0">{
+        // завершение операции по контексту
+        if ctx.Err() != nil </span><span class="cov0" title="0">{
+                return 0, fmt.Errorf("TaskRepository.Create: %w", ctx.Err())
+        }</span>
+        <span class="cov0" title="0">r.mu.Lock()
+        defer r.mu.Unlock()
+        task.Id = r.idTask
+        r.tasks[r.idTask] = task // пишем новую таску
+        r.idTask++               // сдвигаем счетчик
+        return task.Id, nil</span>
+}
+
+// UpdateStatus обновление статуса таска
+func (r *TaskRepository) UpdateStatus(ctx context.Context, id entity.IdTask, status entity.Status) error <span class="cov0" title="0">{
+        // завершение операции по контексту
+        if ctx.Err() != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("TaskRepository.UpdateStatus: %w", ctx.Err())
+        }</span>
+        <span class="cov0" title="0">r.mu.Lock()
+        defer r.mu.Unlock()
+        if tsk, ok := r.tasks[id]; !ok </span><span class="cov0" title="0">{
+                return fmt.Errorf("TaskRepository.UpdateStatus: %w", errors_repo.ErrTaskNotExist)
+        }</span> else<span class="cov0" title="0"> {
+                tsk.Status = status
+                r.tasks[id] = tsk // обновляем таску
+        }</span>
+        <span class="cov0" title="0">return nil</span>
+}
+
+// Get получение таска
+func (r *TaskRepository) Get(ctx context.Context, id entity.IdTask) (*entity.Task, error) <span class="cov0" title="0">{
+        // завершение операции по контексту
+        if ctx.Err() != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("TaskRepository.Get: %w", ctx.Err())
+        }</span>
+        <span class="cov0" title="0">r.mu.RLock()
+        defer r.mu.RUnlock()
+        if tsk, ok := r.tasks[id]; !ok </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("TaskRepository.Get: %w", errors_repo.ErrTaskNotExist)
+        }</span> else<span class="cov0" title="0"> {
+                return &amp;tsk, nil
+        }</span>
+}
+
+// UpdateFileData обновление данных
+func (r *TaskRepository) UpdateFileData(ctx context.Context, id entity.IdTask, url entity.Url, data []byte) error <span class="cov0" title="0">{
+        // завершение операции по контексту
+        if ctx.Err() != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("TaskRepository.UpdateFileData: %w", ctx.Err())
+        }</span>
+
+        <span class="cov0" title="0">r.mu.RLock()
+        defer r.mu.RUnlock()
+        if tsk, ok := r.tasks[id]; !ok </span><span class="cov0" title="0">{
+                return fmt.Errorf("TaskRepository.UpdateFileData: %w", errors_repo.ErrTaskNotExist)
+        }</span> else<span class="cov0" title="0"> {
+                for i, file := range tsk.Files </span><span class="cov0" title="0">{
+                        if file.Url == url </span><span class="cov0" title="0">{ // допускаем что url в рамках таска уникальные
+                                tsk.Files[i].Data = data
+                                tsk.Files[i].Id = r.idFile
+                                r.idFile++
+                                r.tasks[id] = tsk
+                                return nil
+                        }</span>
+                }
+        }
+        <span class="cov0" title="0">return fmt.Errorf("TaskRepository.UpdateFileData: %w", errors_repo.ErrFileNotExist)</span>
+}
+
+// UpdateFileErr обновление ошибки
+func (r *TaskRepository) UpdateFileErr(ctx context.Context, id entity.IdTask, url entity.Url, fileErr entity.Error) error <span class="cov0" title="0">{
+        // завершение операции по контексту
+        if ctx.Err() != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("TaskRepository.UpdateFileErr: %w", ctx.Err())
+        }</span>
+        <span class="cov0" title="0">r.mu.RLock()
+        defer r.mu.RUnlock()
+        if tsk, ok := r.tasks[id]; !ok </span><span class="cov0" title="0">{
+                return fmt.Errorf("TaskRepository.UpdateFileErr: %w", errors_repo.ErrTaskNotExist)
+        }</span> else<span class="cov0" title="0"> {
+                for i, file := range tsk.Files </span><span class="cov0" title="0">{
+                        if file.Url == url </span><span class="cov0" title="0">{ // допускаем что url в рамках таска уникальные
+                                tsk.Files[i].Error = fileErr
+                                r.tasks[id] = tsk
+                                return nil
+                        }</span>
+                }
+        }
+        <span class="cov0" title="0">return fmt.Errorf("TaskRepository.UpdateFileErr: %w", errors_repo.ErrFileNotExist)</span>
+}
+
+// GetTaskFile получение файла
+func (r *TaskRepository) GetTaskFile(ctx context.Context, idTask entity.IdTask, idFile entity.IdFile) ([]byte, error) <span class="cov0" title="0">{
+        // завершение операции по контексту
+        if ctx.Err() != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("TaskRepository.GetTaskFile: %w", ctx.Err())
+        }</span>
+        <span class="cov0" title="0">r.mu.RLock()
+        defer r.mu.RUnlock()
+        if tsk, ok := r.tasks[idTask]; !ok </span><span class="cov0" title="0">{
+                return []byte{}, fmt.Errorf("TaskRepository.GetTaskFile: %w", errors_repo.ErrTaskNotExist)
+        }</span> else<span class="cov0" title="0"> {
+                for _, file := range tsk.Files </span><span class="cov0" title="0">{
+                        if file.Id == idFile &amp;&amp; idFile != 0 </span><span class="cov0" title="0">{
+                                return file.Data, nil
+                        }</span>
+                }
+        }
+        <span class="cov0" title="0">return []byte{}, fmt.Errorf("TaskRepository.GetTaskFile: %w", errors_repo.ErrFileNotExist)</span>
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package detach_context
+
+import (
+        "context"
+        "time"
+)
+
+/*
+Написать DetachContext(ctx context.Context) context.Context , который прокидывает
+все ключи родительского контекста, но не отменяется при отмене родительского контекста.
+*/
+
+type MyDetachContext struct {
+        ctx context.Context
+}
+
+func (c MyDetachContext) Deadline() (deadline time.Time, ok bool) <span class="cov0" title="0">{
+        return time.Time{}, false
+}</span>
+func (c MyDetachContext) Done() &lt;-chan struct{} <span class="cov0" title="0">{
+        return nil
+}</span>
+func (c MyDetachContext) Err() error <span class="cov0" title="0">{
+        return nil
+}</span>
+func (c MyDetachContext) Value(key any) any <span class="cov0" title="0">{
+        return c.ctx.Value(key)
+}</span>
+
+func DetachContext(ctx context.Context) context.Context <span class="cov0" title="0">{
+        return MyDetachContext{ctx: ctx}
+}</span>
+</pre>
+		
+		<pre class="file" id="file5" style="display: none">package server
+
+import (
+        "encoding/json"
+        "log"
+        "net/http"
+)
+
+func EncodeResponse(w http.ResponseWriter, message string, statusCode int, errCode ErrorCode) <span class="cov0" title="0">{
+        w.WriteHeader(statusCode)
+        err := json.NewEncoder(w).Encode(ErrorResponse{
+                Code:    errCode,
+                Message: message,
+        })
+        if err != nil </span><span class="cov0" title="0">{
+                log.Println("EncodeResponse error: %w", err)
+        }</span>
+}
+
+func SwaggerErrorHandlerFunc(w http.ResponseWriter, message string, statusCode int) <span class="cov0" title="0">{
+        w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+        if statusCode == http.StatusBadRequest </span><span class="cov0" title="0">{
+                EncodeResponse(w, message, statusCode, ErrorCodeBADREQUEST)
+                return
+        }</span>
+        <span class="cov0" title="0">EncodeResponse(w, message, http.StatusInternalServerError, ErrorCodeINTERNALSERVERERROR)
+        return</span>
+}
+
+func RequestErrorHandlerFunc(w http.ResponseWriter, _ *http.Request, err error) <span class="cov0" title="0">{
+        w.Header().Set("Content-Type", "application/json; charset=utf-8")
+        EncodeResponse(w, err.Error(), http.StatusBadRequest, ErrorCodeBADREQUEST)
+}</span>
+
+func ResponseErrorHandlerFunc(w http.ResponseWriter, _ *http.Request, err error) <span class="cov0" title="0">{
+        w.Header().Set("Content-Type", "application/json; charset=utf-8")
+        EncodeResponse(w, err.Error(), http.StatusInternalServerError, ErrorCodeBADREQUEST)
+}</span>
+</pre>
+		
+		<pre class="file" id="file6" style="display: none">package middleware
+
+import (
+        "context"
+        "fmt"
+        "github.com/google/uuid"
+        "github.com/oapi-codegen/runtime/strictmiddleware/nethttp"
+        "log"
+        "net/http"
+        "runtime/debug"
+)
+
+type RequestId = struct{}
+
+func AddRequestId(f nethttp.StrictHttpHandlerFunc, operationID string) nethttp.StrictHttpHandlerFunc <span class="cov0" title="0">{
+        return func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (response interface{}, err error) </span><span class="cov0" title="0">{
+                rId := r.Header.Get("X-Request-Id")
+                // добавление request-id в контекст и в ответ
+                if rId == "" </span><span class="cov0" title="0">{
+                        rId = uuid.New().String()
+                        ctx = context.WithValue(ctx, RequestId{}, uuid.New())
+                }</span> else<span class="cov0" title="0"> {
+                        ctx = context.WithValue(ctx, RequestId{}, rId)
+                }</span>
+
+                // добавление request-id в ответ
+                <span class="cov0" title="0">w.Header().Add("X-Request-Id", rId)
+
+                return f(ctx, w, r, request)</span>
+        }
+}
+
+func PanicRecover(f nethttp.StrictHttpHandlerFunc, operationID string) nethttp.StrictHttpHandlerFunc <span class="cov0" title="0">{
+        return func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (response interface{}, err error) </span><span class="cov0" title="0">{
+                defer func() </span><span class="cov0" title="0">{
+                        if rec := recover(); rec != nil </span><span class="cov0" title="0">{
+                                log.Printf("panic recovered: %s, %v,\n%s", operationID, rec, string(debug.Stack()))
+                                err = fmt.Errorf("%v", r)
+                        }</span>
+                }()
+                <span class="cov0" title="0">return f(ctx, w, r, request)</span>
+        }
+}
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">// Code generated by MockGen. DO NOT EDIT.
+// Source: task_server.go
+
+// Package server is a generated GoMock package.
+package server
+
+import (
+        entity "bcc-go-project/internal/domain/entity"
+        context "context"
+        reflect "reflect"
+
+        gomock "github.com/golang/mock/gomock"
+)
+
+// MockTaskCreateUseCase is a mock of TaskCreateUseCase interface.
+type MockTaskCreateUseCase struct {
+        ctrl     *gomock.Controller
+        recorder *MockTaskCreateUseCaseMockRecorder
+}
+
+// MockTaskCreateUseCaseMockRecorder is the mock recorder for MockTaskCreateUseCase.
+type MockTaskCreateUseCaseMockRecorder struct {
+        mock *MockTaskCreateUseCase
+}
+
+// NewMockTaskCreateUseCase creates a new mock instance.
+func NewMockTaskCreateUseCase(ctrl *gomock.Controller) *MockTaskCreateUseCase <span class="cov8" title="1">{
+        mock := &amp;MockTaskCreateUseCase{ctrl: ctrl}
+        mock.recorder = &amp;MockTaskCreateUseCaseMockRecorder{mock}
+        return mock
+}</span>
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockTaskCreateUseCase) EXPECT() *MockTaskCreateUseCaseMockRecorder <span class="cov8" title="1">{
+        return m.recorder
+}</span>
+
+// CreateTask mocks base method.
+func (m *MockTaskCreateUseCase) CreateTask(ctx context.Context, task entity.Task) (entity.IdTask, entity.Status, error) <span class="cov8" title="1">{
+        m.ctrl.T.Helper()
+        ret := m.ctrl.Call(m, "CreateTask", ctx, task)
+        ret0, _ := ret[0].(entity.IdTask)
+        ret1, _ := ret[1].(entity.Status)
+        ret2, _ := ret[2].(error)
+        return ret0, ret1, ret2
+}</span>
+
+// CreateTask indicates an expected call of CreateTask.
+func (mr *MockTaskCreateUseCaseMockRecorder) CreateTask(ctx, task interface{}) *gomock.Call <span class="cov8" title="1">{
+        mr.mock.ctrl.T.Helper()
+        return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateTask", reflect.TypeOf((*MockTaskCreateUseCase)(nil).CreateTask), ctx, task)
+}</span>
+
+// MockTaskGetUseCase is a mock of TaskGetUseCase interface.
+type MockTaskGetUseCase struct {
+        ctrl     *gomock.Controller
+        recorder *MockTaskGetUseCaseMockRecorder
+}
+
+// MockTaskGetUseCaseMockRecorder is the mock recorder for MockTaskGetUseCase.
+type MockTaskGetUseCaseMockRecorder struct {
+        mock *MockTaskGetUseCase
+}
+
+// NewMockTaskGetUseCase creates a new mock instance.
+func NewMockTaskGetUseCase(ctrl *gomock.Controller) *MockTaskGetUseCase <span class="cov8" title="1">{
+        mock := &amp;MockTaskGetUseCase{ctrl: ctrl}
+        mock.recorder = &amp;MockTaskGetUseCaseMockRecorder{mock}
+        return mock
+}</span>
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockTaskGetUseCase) EXPECT() *MockTaskGetUseCaseMockRecorder <span class="cov8" title="1">{
+        return m.recorder
+}</span>
+
+// GetTask mocks base method.
+func (m *MockTaskGetUseCase) GetTask(ctx context.Context, id entity.IdTask) (*entity.Task, error) <span class="cov8" title="1">{
+        m.ctrl.T.Helper()
+        ret := m.ctrl.Call(m, "GetTask", ctx, id)
+        ret0, _ := ret[0].(*entity.Task)
+        ret1, _ := ret[1].(error)
+        return ret0, ret1
+}</span>
+
+// GetTask indicates an expected call of GetTask.
+func (mr *MockTaskGetUseCaseMockRecorder) GetTask(ctx, id interface{}) *gomock.Call <span class="cov8" title="1">{
+        mr.mock.ctrl.T.Helper()
+        return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTask", reflect.TypeOf((*MockTaskGetUseCase)(nil).GetTask), ctx, id)
+}</span>
+
+// MockTaskFileUseCase is a mock of TaskFileUseCase interface.
+type MockTaskFileUseCase struct {
+        ctrl     *gomock.Controller
+        recorder *MockTaskFileUseCaseMockRecorder
+}
+
+// MockTaskFileUseCaseMockRecorder is the mock recorder for MockTaskFileUseCase.
+type MockTaskFileUseCaseMockRecorder struct {
+        mock *MockTaskFileUseCase
+}
+
+// NewMockTaskFileUseCase creates a new mock instance.
+func NewMockTaskFileUseCase(ctrl *gomock.Controller) *MockTaskFileUseCase <span class="cov8" title="1">{
+        mock := &amp;MockTaskFileUseCase{ctrl: ctrl}
+        mock.recorder = &amp;MockTaskFileUseCaseMockRecorder{mock}
+        return mock
+}</span>
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockTaskFileUseCase) EXPECT() *MockTaskFileUseCaseMockRecorder <span class="cov8" title="1">{
+        return m.recorder
+}</span>
+
+// GetTaskFile mocks base method.
+func (m *MockTaskFileUseCase) GetTaskFile(ctx context.Context, idTask entity.IdTask, idFile entity.IdFile) ([]byte, error) <span class="cov8" title="1">{
+        m.ctrl.T.Helper()
+        ret := m.ctrl.Call(m, "GetTaskFile", ctx, idTask, idFile)
+        ret0, _ := ret[0].([]byte)
+        ret1, _ := ret[1].(error)
+        return ret0, ret1
+}</span>
+
+// GetTaskFile indicates an expected call of GetTaskFile.
+func (mr *MockTaskFileUseCaseMockRecorder) GetTaskFile(ctx, idTask, idFile interface{}) *gomock.Call <span class="cov8" title="1">{
+        mr.mock.ctrl.T.Helper()
+        return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTaskFile", reflect.TypeOf((*MockTaskFileUseCase)(nil).GetTaskFile), ctx, idTask, idFile)
+}</span>
+</pre>
+		
+		<pre class="file" id="file8" style="display: none">// Package server provides primitives to interact with the openapi HTTP API.
+//
+// Code generated by github.com/deepmap/oapi-codegen version v1.16.3 DO NOT EDIT.
+package server
+
+import (
+        "bytes"
+        "compress/gzip"
+        "context"
+        "encoding/base64"
+        "encoding/json"
+        "fmt"
+        "io"
+        "net/http"
+        "net/url"
+        "path"
+        "strings"
+
+        "github.com/getkin/kin-openapi/openapi3"
+        "github.com/go-chi/chi/v5"
+        "github.com/oapi-codegen/runtime"
+        strictnethttp "github.com/oapi-codegen/runtime/strictmiddleware/nethttp"
+)
+
+// Defines values for ErrorCode.
+const (
+        ErrorCodeBADREQUEST          ErrorCode = "BAD_REQUEST"
+        ErrorCodeFORBIDDEN           ErrorCode = "FORBIDDEN"
+        ErrorCodeINTERNALSERVERERROR ErrorCode = "INTERNAL_SERVER_ERROR"
+        ErrorCodeNOTFOUND            ErrorCode = "NOT_FOUND"
+        ErrorCodeTIMEOUT             ErrorCode = "TIMEOUT"
+)
+
+// Defines values for TaskStatus.
+const (
+        DONE    TaskStatus = "DONE"
+        PROCESS TaskStatus = "PROCESS"
+)
+
+// Defines values for UrlErrErrorCode.
+const (
+        UrlErrErrorCodeERROR   UrlErrErrorCode = "ERROR"
+        UrlErrErrorCodeTIMEOUT UrlErrErrorCode = "TIMEOUT"
+)
+
+// DownloadsIdResponse defines model for DownloadsIdResponse.
+type DownloadsIdResponse struct {
+        Files []DownloadsIdResponse_Files_Item `json:"files"`
+
+        // Id ID заявки, по которому можно опрашивать статус скачивания файлов
+        Id IdTask `json:"id"`
+
+        // Status Статус заявки
+        Status TaskStatus `json:"status"`
+}
+
+// DownloadsIdResponse_Files_Item defines model for DownloadsIdResponse.files.Item.
+type DownloadsIdResponse_Files_Item struct {
+        union json.RawMessage
+}
+
+// DownloadsRequest defines model for DownloadsRequest.
+type DownloadsRequest struct {
+        // Files массив URL для скачивания
+        Files []Url `json:"files"`
+
+        // Timeout таймаут в секундах
+        Timeout string `json:"timeout"`
+}
+
+// DownloadsResponse defines model for DownloadsResponse.
+type DownloadsResponse struct {
+        // Id ID заявки, по которому можно опрашивать статус скачивания файлов
+        Id IdTask `json:"id"`
+
+        // Status Статус заявки
+        Status TaskStatus `json:"status"`
+}
+
+// ErrorCode Код ошибки для ответа
+type ErrorCode string
+
+// ErrorResponse defines model for ErrorResponse.
+type ErrorResponse struct {
+        // Code Код ошибки для ответа
+        Code    ErrorCode `json:"code"`
+        Message string    `json:"message"`
+}
+
+// IdTask ID заявки, по которому можно опрашивать статус скачивания файлов
+type IdTask = int
+
+// TaskStatus Статус заявки
+type TaskStatus string
+
+// Url defines model for Url.
+type Url struct {
+        // Url URL для скачивания файла
+        Url UrlString `json:"url"`
+}
+
+// UrlErr defines model for UrlErr.
+type UrlErr struct {
+        Error struct {
+                Code UrlErrErrorCode `json:"code"`
+        } `json:"error"`
+
+        // Url URL для скачивания файла
+        Url UrlString `json:"url"`
+}
+
+// UrlErrErrorCode defines model for UrlErr.Error.Code.
+type UrlErrErrorCode string
+
+// UrlFile defines model for UrlFile.
+type UrlFile struct {
+        FileId int `json:"file_id"`
+
+        // Url URL для скачивания файла
+        Url UrlString `json:"url"`
+}
+
+// UrlString URL для скачивания файла
+type UrlString = string
+
+// IdFilePar defines model for IdFilePar.
+type IdFilePar = int
+
+// IdTaskPar defines model for IdTaskPar.
+type IdTaskPar = int
+
+// BadRequest400 defines model for BadRequest400.
+type BadRequest400 = ErrorResponse
+
+// InternalServerError500 defines model for InternalServerError500.
+type InternalServerError500 = ErrorResponse
+
+// NotFound404 defines model for NotFound404.
+type NotFound404 = ErrorResponse
+
+// PostDownloadsJSONRequestBody defines body for PostDownloads for application/json ContentType.
+type PostDownloadsJSONRequestBody = DownloadsRequest
+
+// AsUrlFile returns the union data inside the DownloadsIdResponse_Files_Item as a UrlFile
+func (t DownloadsIdResponse_Files_Item) AsUrlFile() (UrlFile, error) <span class="cov8" title="1">{
+        var body UrlFile
+        err := json.Unmarshal(t.union, &amp;body)
+        return body, err
+}</span>
+
+// FromUrlFile overwrites any union data inside the DownloadsIdResponse_Files_Item as the provided UrlFile
+func (t *DownloadsIdResponse_Files_Item) FromUrlFile(v UrlFile) error <span class="cov8" title="1">{
+        b, err := json.Marshal(v)
+        t.union = b
+        return err
+}</span>
+
+// MergeUrlFile performs a merge with any union data inside the DownloadsIdResponse_Files_Item, using the provided UrlFile
+func (t *DownloadsIdResponse_Files_Item) MergeUrlFile(v UrlFile) error <span class="cov0" title="0">{
+        b, err := json.Marshal(v)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">merged, err := runtime.JsonMerge(t.union, b)
+        t.union = merged
+        return err</span>
+}
+
+// AsUrlErr returns the union data inside the DownloadsIdResponse_Files_Item as a UrlErr
+func (t DownloadsIdResponse_Files_Item) AsUrlErr() (UrlErr, error) <span class="cov8" title="1">{
+        var body UrlErr
+        err := json.Unmarshal(t.union, &amp;body)
+        return body, err
+}</span>
+
+// FromUrlErr overwrites any union data inside the DownloadsIdResponse_Files_Item as the provided UrlErr
+func (t *DownloadsIdResponse_Files_Item) FromUrlErr(v UrlErr) error <span class="cov8" title="1">{
+        b, err := json.Marshal(v)
+        t.union = b
+        return err
+}</span>
+
+// MergeUrlErr performs a merge with any union data inside the DownloadsIdResponse_Files_Item, using the provided UrlErr
+func (t *DownloadsIdResponse_Files_Item) MergeUrlErr(v UrlErr) error <span class="cov0" title="0">{
+        b, err := json.Marshal(v)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">merged, err := runtime.JsonMerge(t.union, b)
+        t.union = merged
+        return err</span>
+}
+
+func (t DownloadsIdResponse_Files_Item) MarshalJSON() ([]byte, error) <span class="cov0" title="0">{
+        b, err := t.union.MarshalJSON()
+        return b, err
+}</span>
+
+func (t *DownloadsIdResponse_Files_Item) UnmarshalJSON(b []byte) error <span class="cov0" title="0">{
+        err := t.union.UnmarshalJSON(b)
+        return err
+}</span>
+
+// ServerInterface represents all server handlers.
+type ServerInterface interface {
+        // Download files
+        // (POST /downloads)
+        PostDownloads(w http.ResponseWriter, r *http.Request)
+        // Просмотр статусов
+        // (GET /downloads/{id})
+        GetDownloadsId(w http.ResponseWriter, r *http.Request, id IdTaskPar)
+        // Скачивание файла
+        // (GET /downloads/{id}/files/{file_id})
+        GetDownloadsIdFilesFileId(w http.ResponseWriter, r *http.Request, id IdTaskPar, fileId IdFilePar)
+}
+
+// Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
+
+type Unimplemented struct{}
+
+// Download files
+// (POST /downloads)
+func (_ Unimplemented) PostDownloads(w http.ResponseWriter, r *http.Request) <span class="cov0" title="0">{
+        w.WriteHeader(http.StatusNotImplemented)
+}</span>
+
+// Просмотр статусов
+// (GET /downloads/{id})
+func (_ Unimplemented) GetDownloadsId(w http.ResponseWriter, r *http.Request, id IdTaskPar) <span class="cov0" title="0">{
+        w.WriteHeader(http.StatusNotImplemented)
+}</span>
+
+// Скачивание файла
+// (GET /downloads/{id}/files/{file_id})
+func (_ Unimplemented) GetDownloadsIdFilesFileId(w http.ResponseWriter, r *http.Request, id IdTaskPar, fileId IdFilePar) <span class="cov0" title="0">{
+        w.WriteHeader(http.StatusNotImplemented)
+}</span>
+
+// ServerInterfaceWrapper converts contexts to parameters.
+type ServerInterfaceWrapper struct {
+        Handler            ServerInterface
+        HandlerMiddlewares []MiddlewareFunc
+        ErrorHandlerFunc   func(w http.ResponseWriter, r *http.Request, err error)
+}
+
+type MiddlewareFunc func(http.Handler) http.Handler
+
+// PostDownloads operation middleware
+func (siw *ServerInterfaceWrapper) PostDownloads(w http.ResponseWriter, r *http.Request) <span class="cov0" title="0">{
+        ctx := r.Context()
+
+        handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) </span><span class="cov0" title="0">{
+                siw.Handler.PostDownloads(w, r)
+        }</span>))
+
+        <span class="cov0" title="0">for _, middleware := range siw.HandlerMiddlewares </span><span class="cov0" title="0">{
+                handler = middleware(handler)
+        }</span>
+
+        <span class="cov0" title="0">handler.ServeHTTP(w, r.WithContext(ctx))</span>
+}
+
+// GetDownloadsId operation middleware
+func (siw *ServerInterfaceWrapper) GetDownloadsId(w http.ResponseWriter, r *http.Request) <span class="cov0" title="0">{
+        ctx := r.Context()
+
+        var err error
+
+        // ------------- Path parameter "id" -------------
+        var id IdTaskPar
+
+        err = runtime.BindStyledParameterWithLocation("simple", false, "id", runtime.ParamLocationPath, chi.URLParam(r, "id"), &amp;id)
+        if err != nil </span><span class="cov0" title="0">{
+                siw.ErrorHandlerFunc(w, r, &amp;InvalidParamFormatError{ParamName: "id", Err: err})
+                return
+        }</span>
+
+        <span class="cov0" title="0">handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) </span><span class="cov0" title="0">{
+                siw.Handler.GetDownloadsId(w, r, id)
+        }</span>))
+
+        <span class="cov0" title="0">for _, middleware := range siw.HandlerMiddlewares </span><span class="cov0" title="0">{
+                handler = middleware(handler)
+        }</span>
+
+        <span class="cov0" title="0">handler.ServeHTTP(w, r.WithContext(ctx))</span>
+}
+
+// GetDownloadsIdFilesFileId operation middleware
+func (siw *ServerInterfaceWrapper) GetDownloadsIdFilesFileId(w http.ResponseWriter, r *http.Request) <span class="cov0" title="0">{
+        ctx := r.Context()
+
+        var err error
+
+        // ------------- Path parameter "id" -------------
+        var id IdTaskPar
+
+        err = runtime.BindStyledParameterWithLocation("simple", false, "id", runtime.ParamLocationPath, chi.URLParam(r, "id"), &amp;id)
+        if err != nil </span><span class="cov0" title="0">{
+                siw.ErrorHandlerFunc(w, r, &amp;InvalidParamFormatError{ParamName: "id", Err: err})
+                return
+        }</span>
+
+        // ------------- Path parameter "file_id" -------------
+        <span class="cov0" title="0">var fileId IdFilePar
+
+        err = runtime.BindStyledParameterWithLocation("simple", false, "file_id", runtime.ParamLocationPath, chi.URLParam(r, "file_id"), &amp;fileId)
+        if err != nil </span><span class="cov0" title="0">{
+                siw.ErrorHandlerFunc(w, r, &amp;InvalidParamFormatError{ParamName: "file_id", Err: err})
+                return
+        }</span>
+
+        <span class="cov0" title="0">handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) </span><span class="cov0" title="0">{
+                siw.Handler.GetDownloadsIdFilesFileId(w, r, id, fileId)
+        }</span>))
+
+        <span class="cov0" title="0">for _, middleware := range siw.HandlerMiddlewares </span><span class="cov0" title="0">{
+                handler = middleware(handler)
+        }</span>
+
+        <span class="cov0" title="0">handler.ServeHTTP(w, r.WithContext(ctx))</span>
+}
+
+type UnescapedCookieParamError struct {
+        ParamName string
+        Err       error
+}
+
+func (e *UnescapedCookieParamError) Error() string <span class="cov0" title="0">{
+        return fmt.Sprintf("error unescaping cookie parameter '%s'", e.ParamName)
+}</span>
+
+func (e *UnescapedCookieParamError) Unwrap() error <span class="cov0" title="0">{
+        return e.Err
+}</span>
+
+type UnmarshalingParamError struct {
+        ParamName string
+        Err       error
+}
+
+func (e *UnmarshalingParamError) Error() string <span class="cov0" title="0">{
+        return fmt.Sprintf("Error unmarshaling parameter %s as JSON: %s", e.ParamName, e.Err.Error())
+}</span>
+
+func (e *UnmarshalingParamError) Unwrap() error <span class="cov0" title="0">{
+        return e.Err
+}</span>
+
+type RequiredParamError struct {
+        ParamName string
+}
+
+func (e *RequiredParamError) Error() string <span class="cov0" title="0">{
+        return fmt.Sprintf("Query argument %s is required, but not found", e.ParamName)
+}</span>
+
+type RequiredHeaderError struct {
+        ParamName string
+        Err       error
+}
+
+func (e *RequiredHeaderError) Error() string <span class="cov0" title="0">{
+        return fmt.Sprintf("Header parameter %s is required, but not found", e.ParamName)
+}</span>
+
+func (e *RequiredHeaderError) Unwrap() error <span class="cov0" title="0">{
+        return e.Err
+}</span>
+
+type InvalidParamFormatError struct {
+        ParamName string
+        Err       error
+}
+
+func (e *InvalidParamFormatError) Error() string <span class="cov0" title="0">{
+        return fmt.Sprintf("Invalid format for parameter %s: %s", e.ParamName, e.Err.Error())
+}</span>
+
+func (e *InvalidParamFormatError) Unwrap() error <span class="cov0" title="0">{
+        return e.Err
+}</span>
+
+type TooManyValuesForParamError struct {
+        ParamName string
+        Count     int
+}
+
+func (e *TooManyValuesForParamError) Error() string <span class="cov0" title="0">{
+        return fmt.Sprintf("Expected one value for %s, got %d", e.ParamName, e.Count)
+}</span>
+
+// Handler creates http.Handler with routing matching OpenAPI spec.
+func Handler(si ServerInterface) http.Handler <span class="cov0" title="0">{
+        return HandlerWithOptions(si, ChiServerOptions{})
+}</span>
+
+type ChiServerOptions struct {
+        BaseURL          string
+        BaseRouter       chi.Router
+        Middlewares      []MiddlewareFunc
+        ErrorHandlerFunc func(w http.ResponseWriter, r *http.Request, err error)
+}
+
+// HandlerFromMux creates http.Handler with routing matching OpenAPI spec based on the provided mux.
+func HandlerFromMux(si ServerInterface, r chi.Router) http.Handler <span class="cov0" title="0">{
+        return HandlerWithOptions(si, ChiServerOptions{
+                BaseRouter: r,
+        })
+}</span>
+
+func HandlerFromMuxWithBaseURL(si ServerInterface, r chi.Router, baseURL string) http.Handler <span class="cov0" title="0">{
+        return HandlerWithOptions(si, ChiServerOptions{
+                BaseURL:    baseURL,
+                BaseRouter: r,
+        })
+}</span>
+
+// HandlerWithOptions creates http.Handler with additional options
+func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handler <span class="cov0" title="0">{
+        r := options.BaseRouter
+
+        if r == nil </span><span class="cov0" title="0">{
+                r = chi.NewRouter()
+        }</span>
+        <span class="cov0" title="0">if options.ErrorHandlerFunc == nil </span><span class="cov0" title="0">{
+                options.ErrorHandlerFunc = func(w http.ResponseWriter, r *http.Request, err error) </span><span class="cov0" title="0">{
+                        http.Error(w, err.Error(), http.StatusBadRequest)
+                }</span>
+        }
+        <span class="cov0" title="0">wrapper := ServerInterfaceWrapper{
+                Handler:            si,
+                HandlerMiddlewares: options.Middlewares,
+                ErrorHandlerFunc:   options.ErrorHandlerFunc,
+        }
+
+        r.Group(func(r chi.Router) </span><span class="cov0" title="0">{
+                r.Post(options.BaseURL+"/downloads", wrapper.PostDownloads)
+        }</span>)
+        <span class="cov0" title="0">r.Group(func(r chi.Router) </span><span class="cov0" title="0">{
+                r.Get(options.BaseURL+"/downloads/{id}", wrapper.GetDownloadsId)
+        }</span>)
+        <span class="cov0" title="0">r.Group(func(r chi.Router) </span><span class="cov0" title="0">{
+                r.Get(options.BaseURL+"/downloads/{id}/files/{file_id}", wrapper.GetDownloadsIdFilesFileId)
+        }</span>)
+
+        <span class="cov0" title="0">return r</span>
+}
+
+type BadRequest400JSONResponse ErrorResponse
+
+type InternalServerError500JSONResponse ErrorResponse
+
+type NotFound404JSONResponse ErrorResponse
+
+type PostDownloadsRequestObject struct {
+        Body *PostDownloadsJSONRequestBody
+}
+
+type PostDownloadsResponseObject interface {
+        VisitPostDownloadsResponse(w http.ResponseWriter) error
+}
+
+type PostDownloads201JSONResponse DownloadsResponse
+
+func (response PostDownloads201JSONResponse) VisitPostDownloadsResponse(w http.ResponseWriter) error <span class="cov0" title="0">{
+        w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(201)
+
+        return json.NewEncoder(w).Encode(response)
+}</span>
+
+type PostDownloads400JSONResponse struct{ BadRequest400JSONResponse }
+
+func (response PostDownloads400JSONResponse) VisitPostDownloadsResponse(w http.ResponseWriter) error <span class="cov0" title="0">{
+        w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(400)
+
+        return json.NewEncoder(w).Encode(response)
+}</span>
+
+type PostDownloads500JSONResponse struct {
+        InternalServerError500JSONResponse
+}
+
+func (response PostDownloads500JSONResponse) VisitPostDownloadsResponse(w http.ResponseWriter) error <span class="cov0" title="0">{
+        w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(500)
+
+        return json.NewEncoder(w).Encode(response)
+}</span>
+
+type GetDownloadsIdRequestObject struct {
+        Id IdTaskPar `json:"id"`
+}
+
+type GetDownloadsIdResponseObject interface {
+        VisitGetDownloadsIdResponse(w http.ResponseWriter) error
+}
+
+type GetDownloadsId200JSONResponse DownloadsIdResponse
+
+func (response GetDownloadsId200JSONResponse) VisitGetDownloadsIdResponse(w http.ResponseWriter) error <span class="cov0" title="0">{
+        w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(200)
+
+        return json.NewEncoder(w).Encode(response)
+}</span>
+
+type GetDownloadsId400JSONResponse struct{ BadRequest400JSONResponse }
+
+func (response GetDownloadsId400JSONResponse) VisitGetDownloadsIdResponse(w http.ResponseWriter) error <span class="cov0" title="0">{
+        w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(400)
+
+        return json.NewEncoder(w).Encode(response)
+}</span>
+
+type GetDownloadsId404JSONResponse struct{ NotFound404JSONResponse }
+
+func (response GetDownloadsId404JSONResponse) VisitGetDownloadsIdResponse(w http.ResponseWriter) error <span class="cov0" title="0">{
+        w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(404)
+
+        return json.NewEncoder(w).Encode(response)
+}</span>
+
+type GetDownloadsId500JSONResponse struct {
+        InternalServerError500JSONResponse
+}
+
+func (response GetDownloadsId500JSONResponse) VisitGetDownloadsIdResponse(w http.ResponseWriter) error <span class="cov0" title="0">{
+        w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(500)
+
+        return json.NewEncoder(w).Encode(response)
+}</span>
+
+type GetDownloadsIdFilesFileIdRequestObject struct {
+        Id     IdTaskPar `json:"id"`
+        FileId IdFilePar `json:"file_id"`
+}
+
+type GetDownloadsIdFilesFileIdResponseObject interface {
+        VisitGetDownloadsIdFilesFileIdResponse(w http.ResponseWriter) error
+}
+
+type GetDownloadsIdFilesFileId200ApplicationoctetStreamResponse struct {
+        Body          io.Reader
+        ContentLength int64
+}
+
+func (response GetDownloadsIdFilesFileId200ApplicationoctetStreamResponse) VisitGetDownloadsIdFilesFileIdResponse(w http.ResponseWriter) error <span class="cov0" title="0">{
+        w.Header().Set("Content-Type", "application/octet-stream")
+        if response.ContentLength != 0 </span><span class="cov0" title="0">{
+                w.Header().Set("Content-Length", fmt.Sprint(response.ContentLength))
+        }</span>
+        <span class="cov0" title="0">w.WriteHeader(200)
+
+        if closer, ok := response.Body.(io.ReadCloser); ok </span><span class="cov0" title="0">{
+                defer closer.Close()
+        }</span>
+        <span class="cov0" title="0">_, err := io.Copy(w, response.Body)
+        return err</span>
+}
+
+type GetDownloadsIdFilesFileId400JSONResponse struct{ BadRequest400JSONResponse }
+
+func (response GetDownloadsIdFilesFileId400JSONResponse) VisitGetDownloadsIdFilesFileIdResponse(w http.ResponseWriter) error <span class="cov0" title="0">{
+        w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(400)
+
+        return json.NewEncoder(w).Encode(response)
+}</span>
+
+type GetDownloadsIdFilesFileId404JSONResponse struct{ NotFound404JSONResponse }
+
+func (response GetDownloadsIdFilesFileId404JSONResponse) VisitGetDownloadsIdFilesFileIdResponse(w http.ResponseWriter) error <span class="cov0" title="0">{
+        w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(404)
+
+        return json.NewEncoder(w).Encode(response)
+}</span>
+
+type GetDownloadsIdFilesFileId500JSONResponse struct {
+        InternalServerError500JSONResponse
+}
+
+func (response GetDownloadsIdFilesFileId500JSONResponse) VisitGetDownloadsIdFilesFileIdResponse(w http.ResponseWriter) error <span class="cov0" title="0">{
+        w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(500)
+
+        return json.NewEncoder(w).Encode(response)
+}</span>
+
+// StrictServerInterface represents all server handlers.
+type StrictServerInterface interface {
+        // Download files
+        // (POST /downloads)
+        PostDownloads(ctx context.Context, request PostDownloadsRequestObject) (PostDownloadsResponseObject, error)
+        // Просмотр статусов
+        // (GET /downloads/{id})
+        GetDownloadsId(ctx context.Context, request GetDownloadsIdRequestObject) (GetDownloadsIdResponseObject, error)
+        // Скачивание файла
+        // (GET /downloads/{id}/files/{file_id})
+        GetDownloadsIdFilesFileId(ctx context.Context, request GetDownloadsIdFilesFileIdRequestObject) (GetDownloadsIdFilesFileIdResponseObject, error)
+}
+
+type StrictHandlerFunc = strictnethttp.StrictHttpHandlerFunc
+type StrictMiddlewareFunc = strictnethttp.StrictHttpMiddlewareFunc
+
+type StrictHTTPServerOptions struct {
+        RequestErrorHandlerFunc  func(w http.ResponseWriter, r *http.Request, err error)
+        ResponseErrorHandlerFunc func(w http.ResponseWriter, r *http.Request, err error)
+}
+
+func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareFunc) ServerInterface <span class="cov0" title="0">{
+        return &amp;strictHandler{ssi: ssi, middlewares: middlewares, options: StrictHTTPServerOptions{
+                RequestErrorHandlerFunc: func(w http.ResponseWriter, r *http.Request, err error) </span><span class="cov0" title="0">{
+                        http.Error(w, err.Error(), http.StatusBadRequest)
+                }</span>,
+                ResponseErrorHandlerFunc: func(w http.ResponseWriter, r *http.Request, err error) <span class="cov0" title="0">{
+                        http.Error(w, err.Error(), http.StatusInternalServerError)
+                }</span>,
+        }}
+}
+
+func NewStrictHandlerWithOptions(ssi StrictServerInterface, middlewares []StrictMiddlewareFunc, options StrictHTTPServerOptions) ServerInterface <span class="cov0" title="0">{
+        return &amp;strictHandler{ssi: ssi, middlewares: middlewares, options: options}
+}</span>
+
+type strictHandler struct {
+        ssi         StrictServerInterface
+        middlewares []StrictMiddlewareFunc
+        options     StrictHTTPServerOptions
+}
+
+// PostDownloads operation middleware
+func (sh *strictHandler) PostDownloads(w http.ResponseWriter, r *http.Request) <span class="cov0" title="0">{
+        var request PostDownloadsRequestObject
+
+        var body PostDownloadsJSONRequestBody
+        if err := json.NewDecoder(r.Body).Decode(&amp;body); err != nil </span><span class="cov0" title="0">{
+                sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+                return
+        }</span>
+        <span class="cov0" title="0">request.Body = &amp;body
+
+        handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) </span><span class="cov0" title="0">{
+                return sh.ssi.PostDownloads(ctx, request.(PostDownloadsRequestObject))
+        }</span>
+        <span class="cov0" title="0">for _, middleware := range sh.middlewares </span><span class="cov0" title="0">{
+                handler = middleware(handler, "PostDownloads")
+        }</span>
+
+        <span class="cov0" title="0">response, err := handler(r.Context(), w, r, request)
+
+        if err != nil </span><span class="cov0" title="0">{
+                sh.options.ResponseErrorHandlerFunc(w, r, err)
+        }</span> else<span class="cov0" title="0"> if validResponse, ok := response.(PostDownloadsResponseObject); ok </span><span class="cov0" title="0">{
+                if err := validResponse.VisitPostDownloadsResponse(w); err != nil </span><span class="cov0" title="0">{
+                        sh.options.ResponseErrorHandlerFunc(w, r, err)
+                }</span>
+        } else<span class="cov0" title="0"> if response != nil </span><span class="cov0" title="0">{
+                sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+        }</span>
+}
+
+// GetDownloadsId operation middleware
+func (sh *strictHandler) GetDownloadsId(w http.ResponseWriter, r *http.Request, id IdTaskPar) <span class="cov0" title="0">{
+        var request GetDownloadsIdRequestObject
+
+        request.Id = id
+
+        handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) </span><span class="cov0" title="0">{
+                return sh.ssi.GetDownloadsId(ctx, request.(GetDownloadsIdRequestObject))
+        }</span>
+        <span class="cov0" title="0">for _, middleware := range sh.middlewares </span><span class="cov0" title="0">{
+                handler = middleware(handler, "GetDownloadsId")
+        }</span>
+
+        <span class="cov0" title="0">response, err := handler(r.Context(), w, r, request)
+
+        if err != nil </span><span class="cov0" title="0">{
+                sh.options.ResponseErrorHandlerFunc(w, r, err)
+        }</span> else<span class="cov0" title="0"> if validResponse, ok := response.(GetDownloadsIdResponseObject); ok </span><span class="cov0" title="0">{
+                if err := validResponse.VisitGetDownloadsIdResponse(w); err != nil </span><span class="cov0" title="0">{
+                        sh.options.ResponseErrorHandlerFunc(w, r, err)
+                }</span>
+        } else<span class="cov0" title="0"> if response != nil </span><span class="cov0" title="0">{
+                sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+        }</span>
+}
+
+// GetDownloadsIdFilesFileId operation middleware
+func (sh *strictHandler) GetDownloadsIdFilesFileId(w http.ResponseWriter, r *http.Request, id IdTaskPar, fileId IdFilePar) <span class="cov0" title="0">{
+        var request GetDownloadsIdFilesFileIdRequestObject
+
+        request.Id = id
+        request.FileId = fileId
+
+        handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) </span><span class="cov0" title="0">{
+                return sh.ssi.GetDownloadsIdFilesFileId(ctx, request.(GetDownloadsIdFilesFileIdRequestObject))
+        }</span>
+        <span class="cov0" title="0">for _, middleware := range sh.middlewares </span><span class="cov0" title="0">{
+                handler = middleware(handler, "GetDownloadsIdFilesFileId")
+        }</span>
+
+        <span class="cov0" title="0">response, err := handler(r.Context(), w, r, request)
+
+        if err != nil </span><span class="cov0" title="0">{
+                sh.options.ResponseErrorHandlerFunc(w, r, err)
+        }</span> else<span class="cov0" title="0"> if validResponse, ok := response.(GetDownloadsIdFilesFileIdResponseObject); ok </span><span class="cov0" title="0">{
+                if err := validResponse.VisitGetDownloadsIdFilesFileIdResponse(w); err != nil </span><span class="cov0" title="0">{
+                        sh.options.ResponseErrorHandlerFunc(w, r, err)
+                }</span>
+        } else<span class="cov0" title="0"> if response != nil </span><span class="cov0" title="0">{
+                sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+        }</span>
+}
+
+// Base64 encoded, gzipped, json marshaled Swagger object
+var swaggerSpec = []string{
+
+        "H4sIAAAAAAAC/+xYzW7bRhB+lcU2tzKR0iZAqlscyYWARHIlu5fANbbk2mYqcpndVVrDEGDJKVogAQwU",
+        "PRUoiqIvoAhWq9gW8wqzb1TMkrIYk7KcnyaXXgT+DGdnv/lm5lvtU1cEkQh5qBWt7NOISRZwzaW9q3ur",
+        "foevMYk3Hleu9CPti5BWKPwFU5jACQzh1DyHqXkGLwlM4BjGMDUDmJinyWszgNgcEPgHhuYIRnACEwJT",
+        "GBLTt69/ggmMYGi9jalDffQeMb1LHRqygNMK3fY7fMv3qEMlf9z1JfdoRcsud6hyd3nAMDq9F6GpH2q+",
+        "wyXt9Rxa99aZ+u6jR/+mgffQWkUiVNwmYYV5Lf64y5W+VS7jA1eEmocaL1kUdXyX4a5KjxRubT/j+prk",
+        "27RCPynNc1xK3qpSTUohW+k6yaoXIPodxnCCuzcHeGUGMIUYxsQMYAynEFtQ4JU5gNj0YUgR8VBzGbJO",
+        "m8snXNolbn/QmH+BqTk0AxvxFKbmyBwRiM3PMIEXmC9M29gcwAgms5gbQq+KbujdKt/6gIH+ajmDvBsj",
+        "n+zPEF6mBHxm+Zt6w8Wq4vuwI5in6t65W6xWKSIutZ8QBcvEXviaB/ZChLy5TSsPL492Q3awzGnPWWpX",
+        "k5L2Np0ZacW3j7irEcX0AZOS7eG97y3DKKlOtFWa6a5aZo/W7cQyKZFZQT1MKiz14qQwFAV5jmJaT5dA",
+        "eCFdZzA0fdPHYicbrfsEjuHUHBU0AXOETWCG/xI0i4DTfsBFV+djMANLEIzk0AwIjCyX4cQcwhSOYWh+",
+        "pA52HqxAWqHfPCxf/2LzU3WNnq+htPTDnRx6yZ7nKy9BbhH7PlrGi+K1BXhPeLwgl79BDMfZrjCZpRNi",
+        "M4ARjBFq6lAedgNcbL3+oNbcWKcObTTXt1abG40qdehqs7VSr1ZrDerQlbvVrVbtq41aG63qjfVaq3H3",
+        "/la71vq61tqqtVrNVibMWR7SMBdD6qYbWNpq7E57Dg24UmyHZ8bKgpxbz3P7IgjTbOXwq1dfm4YOgVc4",
+        "C04seDFOAzgzhwTOIIa/cWQQiO2UGFrARzhTzXNi+oiyGZhD0y+sI2KeWsKfQgyjOYnP56RDM/zIZ/nP",
+        "jPtsvJm8rrWa92rtNnVotdmoFSYIizSXlm7ycElxt4uRx4+L4E6ba24xjvldTI08RxexrYgBRYG88+6c",
+        "NObNZFd2tBQ22q2kZeQT+x5CmPlPg0htczRZ0svnHMR+sC1kwDSt0K70C7oqTr1wW+QXaftB1OHk7lqd",
+        "aEFcyZnmDtnhmrDQI4gK05yIkAQi5JrJPcIC0UVBjk1ZI3z0gQj5HkFd5bvWFXXoEy5VssLNG+UbZURO",
+        "RDxkkU8r9HP7yE6EXYt4yZv1cJsNoXRR1eRFLeIT2zFzlorjGEZp0b+yYmqM4wfVzKz0Ucq8sMrxEOu8",
+        "b57ZKj65QW2E0kqqukcrdE0ofT5bUpnMlV4R3t4VxBj/gSGyi7iSvlaleuhrbBYt/pj2nCtquJxY6L3O",
+        "NNTxF6X6Z+Wb/0nYKnqruBfrz6pwuwEPdcpGD92np4si3+ebLL1+GOk59PZVvlpwLrAitxsETO7ZmJLA",
+        "SSJI8OWcs6V93+vhQju8iLd/pKeQM5xCVz6vZZiKFpl5k2fql1xnRLgtrPlJeYHAnpuU5mdRlM8XSPP+",
+        "TkhF54SC9Kuu63Kl3j7r6WHp8q+yJ6v3ypRcurNiwsqFAvKULK1K++lkuIRMRU1wPgiS1levErukZRWB",
+        "iX2QHRaXsQdHosKfdyOScwXj2f83b8g64WqurystOQv+Z98F9l3Oj2THynpIMmrlDN3VOqqUSh3hss6u",
+        "ULpyp3ynTHubvX8DAAD//6UAdlCDEwAA",
+}
+
+// GetSwagger returns the content of the embedded swagger specification file
+// or error if failed to decode
+func decodeSpec() ([]byte, error) <span class="cov8" title="1">{
+        zipped, err := base64.StdEncoding.DecodeString(strings.Join(swaggerSpec, ""))
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("error base64 decoding spec: %w", err)
+        }</span>
+        <span class="cov8" title="1">zr, err := gzip.NewReader(bytes.NewReader(zipped))
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("error decompressing spec: %w", err)
+        }</span>
+        <span class="cov8" title="1">var buf bytes.Buffer
+        _, err = buf.ReadFrom(zr)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("error decompressing spec: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return buf.Bytes(), nil</span>
+}
+
+var rawSpec = decodeSpecCached()
+
+// a naive cached of a decoded swagger spec
+func decodeSpecCached() func() ([]byte, error) <span class="cov8" title="1">{
+        data, err := decodeSpec()
+        return func() ([]byte, error) </span><span class="cov0" title="0">{
+                return data, err
+        }</span>
+}
+
+// Constructs a synthetic filesystem for resolving external references when loading openapi specifications.
+func PathToRawSpec(pathToFile string) map[string]func() ([]byte, error) <span class="cov0" title="0">{
+        res := make(map[string]func() ([]byte, error))
+        if len(pathToFile) &gt; 0 </span><span class="cov0" title="0">{
+                res[pathToFile] = rawSpec
+        }</span>
+
+        <span class="cov0" title="0">return res</span>
+}
+
+// GetSwagger returns the Swagger specification corresponding to the generated code
+// in this file. The external references of Swagger specification are resolved.
+// The logic of resolving external references is tightly connected to "import-mapping" feature.
+// Externally referenced files must be embedded in the corresponding golang packages.
+// Urls can be supported but this task was out of the scope.
+func GetSwagger() (swagger *openapi3.T, err error) <span class="cov0" title="0">{
+        resolvePath := PathToRawSpec("")
+
+        loader := openapi3.NewLoader()
+        loader.IsExternalRefsAllowed = true
+        loader.ReadFromURIFunc = func(loader *openapi3.Loader, url *url.URL) ([]byte, error) </span><span class="cov0" title="0">{
+                pathToFile := url.String()
+                pathToFile = path.Clean(pathToFile)
+                getSpec, ok := resolvePath[pathToFile]
+                if !ok </span><span class="cov0" title="0">{
+                        err1 := fmt.Errorf("path not found: %s", pathToFile)
+                        return nil, err1
+                }</span>
+                <span class="cov0" title="0">return getSpec()</span>
+        }
+        <span class="cov0" title="0">var specData []byte
+        specData, err = rawSpec()
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov0" title="0">swagger, err = loader.LoadFromData(specData)
+        if err != nil </span><span class="cov0" title="0">{
+                return
+        }</span>
+        <span class="cov0" title="0">return</span>
+}
+</pre>
+		
+		<pre class="file" id="file9" style="display: none">package server
+
+import (
+        "bcc-go-project/internal/domain/entity"
+        repErr "bcc-go-project/internal/infrastructure/repository/errors_repo"
+        "bytes"
+        "context"
+        "errors"
+        "fmt"
+        "net/url"
+        "strconv"
+        "strings"
+        "time"
+)
+
+//go:generate mockgen -package server -source=task_server.go -destination=mock_task_server.go
+var (
+        statusMapping = map[entity.Status]TaskStatus{
+                entity.TaskStatusProcess: PROCESS,
+                entity.TaskStatusDone:    DONE,
+        }
+        errFileMapping = map[entity.Error]UrlErrErrorCode{
+                entity.FileErr:        UrlErrErrorCodeERROR,
+                entity.FileErrTimeout: UrlErrErrorCodeTIMEOUT,
+        }
+)
+
+type TaskCreateUseCase interface {
+        CreateTask(ctx context.Context, task entity.Task) (id entity.IdTask, status entity.Status, err error)
+}
+type TaskGetUseCase interface {
+        GetTask(ctx context.Context, id entity.IdTask) (*entity.Task, error)
+}
+type TaskFileUseCase interface {
+        GetTaskFile(ctx context.Context, idTask entity.IdTask, idFile entity.IdFile) ([]byte, error)
+}
+
+// TaskServer реализует интерфейс сервера
+type TaskServer struct {
+        TaskCreateUseCase TaskCreateUseCase
+        TaskGetUseCase    TaskGetUseCase
+        TaskFileUseCase   TaskFileUseCase
+}
+
+func NewTaskServer(taskCreateUseCase TaskCreateUseCase, taskGetUseCase TaskGetUseCase, taskFileUseCase TaskFileUseCase) *TaskServer <span class="cov8" title="1">{
+        return &amp;TaskServer{
+                TaskCreateUseCase: taskCreateUseCase,
+                TaskGetUseCase:    taskGetUseCase,
+                TaskFileUseCase:   taskFileUseCase,
+        }
+}</span>
+
+func resp400(msg string, err error) BadRequest400JSONResponse <span class="cov8" title="1">{
+        return BadRequest400JSONResponse{
+                Code:    ErrorCodeBADREQUEST,
+                Message: fmt.Errorf("%s: %w", msg, err).Error(),
+        }
+}</span>
+
+func resp404(msg string, err error) NotFound404JSONResponse <span class="cov8" title="1">{
+        return NotFound404JSONResponse{
+                Code:    ErrorCodeNOTFOUND,
+                Message: fmt.Errorf("%s: %w", msg, err).Error(),
+        }
+}</span>
+
+func resp500(msg string, err error) InternalServerError500JSONResponse <span class="cov8" title="1">{
+        return InternalServerError500JSONResponse{
+                Code:    ErrorCodeINTERNALSERVERERROR,
+                Message: fmt.Errorf("%s: %w", msg, err).Error(),
+        }
+}</span>
+
+func validateURL(u string) error <span class="cov8" title="1">{
+        parsed, err := url.ParseRequestURI(u)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("некорректный URL: %s", u)
+        }</span>
+        <span class="cov8" title="1">if parsed.Scheme == "" || parsed.Host == "" </span><span class="cov8" title="1">{
+                return fmt.Errorf("URL должен содержать схему и хост: %s", u)
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
+func validate(req *PostDownloadsJSONRequestBody) error <span class="cov8" title="1">{
+        for _, file := range req.Files </span><span class="cov8" title="1">{
+                if err := validateURL(file.Url); err != nil </span><span class="cov8" title="1">{
+                        return fmt.Errorf("validate error: %w", err)
+                }</span>
+        }
+        <span class="cov8" title="1">return nil</span>
+}
+
+func strToDuration(timeStr string) (time.Duration, error) <span class="cov8" title="1">{
+        timeout, err := strconv.Atoi(strings.Trim(timeStr, "s"))
+        if err != nil </span><span class="cov0" title="0">{
+                return 0, fmt.Errorf("strToDuration error: %w", err)
+        }</span>
+        <span class="cov8" title="1">return time.Second * time.Duration(timeout), nil</span>
+}
+
+// PostDownloads запуск процесса загрузки
+func (s *TaskServer) PostDownloads(ctx context.Context, request PostDownloadsRequestObject) (PostDownloadsResponseObject, error) <span class="cov8" title="1">{
+        if ctx.Err() != nil </span><span class="cov8" title="1">{
+                return PostDownloads500JSONResponse{resp500("PostDownloads", ctx.Err())}, nil
+        }</span>
+        <span class="cov8" title="1">if err := validate(request.Body); err != nil </span><span class="cov8" title="1">{
+                return PostDownloads400JSONResponse{
+                        resp400("PostDownloads: ошибка валидации параметров", err)}, nil
+        }</span>
+        <span class="cov8" title="1">timeout, err := strToDuration(request.Body.Timeout)
+        //if err != nil {
+        //        return PostDownloads400JSONResponse{
+        //                        resp400("PostDownloads: ошибка валидации таймаута", err)},
+        //                nil
+        //}
+        urls := make([]entity.Url, len(request.Body.Files))
+        for i, urlTask := range request.Body.Files </span><span class="cov8" title="1">{
+                urls[i] = entity.Url(urlTask.Url)
+        }</span>
+        <span class="cov8" title="1">task := entity.NewTask(timeout, urls)
+        taskId, taskStatus, err := s.TaskCreateUseCase.CreateTask(ctx, task)
+        if err != nil </span><span class="cov8" title="1">{
+                return PostDownloads500JSONResponse{
+                                resp500("PostDownloads", err)},
+                        nil
+        }</span>
+        <span class="cov8" title="1">return PostDownloads201JSONResponse{
+                Id:     int(taskId),
+                Status: statusMapping[taskStatus],
+        }, nil</span>
+}
+
+// GetDownloadsId получение таска
+func (s *TaskServer) GetDownloadsId(ctx context.Context, request GetDownloadsIdRequestObject) (GetDownloadsIdResponseObject, error) <span class="cov8" title="1">{
+        if ctx.Err() != nil </span><span class="cov8" title="1">{
+                return GetDownloadsId500JSONResponse{resp500("GetDownloadsId", ctx.Err())}, nil
+        }</span>
+        <span class="cov8" title="1">task, err := s.TaskGetUseCase.GetTask(ctx, entity.IdTask(request.Id))
+        if err != nil </span><span class="cov8" title="1">{
+                if errors.Is(err, repErr.ErrTaskNotExist) </span><span class="cov8" title="1">{
+                        return GetDownloadsId404JSONResponse{resp404("GetDownloadsId", err)}, nil
+                }</span>
+        }
+        //собираем файлы для ответа
+        <span class="cov8" title="1">files := make([]DownloadsIdResponse_Files_Item, len(task.Files))
+        for i, file := range task.Files </span><span class="cov8" title="1">{
+                item := DownloadsIdResponse_Files_Item{}
+                if file.Error != "" </span><span class="cov8" title="1">{
+                        urlErr := UrlErr{
+                                Url: UrlString(file.Url),
+                        }
+                        urlErr.Error.Code = errFileMapping[file.Error]
+                        _ = item.FromUrlErr(urlErr)
+                }</span> else<span class="cov8" title="1"> {
+                        urlFile := UrlFile{
+                                FileId: int(file.Id),
+                                Url:    UrlString(file.Url),
+                        }
+                        _ = item.FromUrlFile(urlFile)
+                }</span>
+                <span class="cov8" title="1">files[i] = item</span>
+        }
+        <span class="cov8" title="1">return GetDownloadsId200JSONResponse{
+                Files:  files,
+                Id:     int(task.Id),
+                Status: statusMapping[task.Status],
+        }, nil</span>
+}
+
+// GetDownloadsIdFilesFileId
+// /downloads/0/files/0
+func (s *TaskServer) GetDownloadsIdFilesFileId(ctx context.Context, request GetDownloadsIdFilesFileIdRequestObject) (GetDownloadsIdFilesFileIdResponseObject, error) <span class="cov8" title="1">{
+        if ctx.Err() != nil </span><span class="cov8" title="1">{
+                return GetDownloadsIdFilesFileId500JSONResponse{resp500("GetDownloadsIdFilesFileId", ctx.Err())}, nil
+        }</span>
+        <span class="cov8" title="1">data, err := s.TaskFileUseCase.GetTaskFile(ctx, entity.IdTask(request.Id), entity.IdFile(request.FileId))
+        if err != nil </span><span class="cov8" title="1">{
+                if errors.Is(err, repErr.ErrTaskNotExist) || errors.Is(err, repErr.ErrFileNotExist) </span><span class="cov8" title="1">{
+                        return GetDownloadsIdFilesFileId404JSONResponse{resp404("GetDownloadsIdFilesFileId", err)}, nil
+                }</span>
+        }
+        <span class="cov8" title="1">return GetDownloadsIdFilesFileId200ApplicationoctetStreamResponse{
+                Body:          bytes.NewReader(data),
+                ContentLength: int64(len(data)),
+        }, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file10" style="display: none">package task
+
+import (
+        "bcc-go-project/internal/domain/entity"
+        "context"
+        "errors"
+        "fmt"
+        "log"
+        "sync"
+        "time"
+)
+
+const repCtxTimeout = 100 * time.Millisecond // Время жизни контекста для запроса в бд, в идеале вынести в настройки
+
+//go:generate mockgen -package task -source=create_task.go -destination=mock_create_task.go
+type CreateTaskRepository interface {
+        Create(ctx context.Context, task entity.Task) (id entity.IdTask, err error)
+        UpdateStatus(ctx context.Context, id entity.IdTask, status entity.Status) error
+        UpdateFileData(ctx context.Context, id entity.IdTask, url entity.Url, data []byte) error
+        UpdateFileErr(ctx context.Context, id entity.IdTask, url entity.Url, fileErr entity.Error) error
+}
+
+type BackgroundRunner interface {
+        GoTask(ctx context.Context, task entity.Task, f func(context.Context, *sync.WaitGroup, entity.Task) error)
+        GoFile(ctx context.Context, wg *sync.WaitGroup, idTask entity.IdTask, file entity.File, f func(context.Context, *sync.WaitGroup, entity.IdTask, entity.File) error)
+}
+
+// AsyncRunner реализация асинхронного запуска загрузки
+type AsyncRunner struct {
+        WgRoot *sync.WaitGroup
+}
+
+func (ar *AsyncRunner) GoTask(ctx context.Context, task entity.Task, f func(context.Context, *sync.WaitGroup, entity.Task) error) <span class="cov0" title="0">{
+        go f(ctx, ar.WgRoot, task)
+}</span>
+func (ar *AsyncRunner) GoFile(ctx context.Context, wg *sync.WaitGroup, idTask entity.IdTask, file entity.File, f func(context.Context, *sync.WaitGroup, entity.IdTask, entity.File) error) <span class="cov0" title="0">{
+        go f(ctx, wg, idTask, file)
+}</span>
+
+// SyncRunner реализация синхронного запуска загрузки для тестов
+type SyncRunner struct{}
+
+func (sr *SyncRunner) GoTask(ctx context.Context, object entity.Task, f func(context.Context, *sync.WaitGroup, entity.Task) error) <span class="cov0" title="0">{
+        f(ctx, &amp;sync.WaitGroup{}, object)
+}</span>
+func (sr *SyncRunner) GoFile(ctx context.Context, wg *sync.WaitGroup, idTask entity.IdTask, file entity.File,
+        f func(context.Context, *sync.WaitGroup, entity.IdTask, entity.File) error) <span class="cov0" title="0">{
+        f(ctx, wg, idTask, file)
+}</span>
+
+type HttpLoader interface {
+        Load(ctx context.Context, url entity.Url) ([]byte, error)
+}
+
+type CreateTaskUseCase struct {
+        Repository CreateTaskRepository
+        HttpLoader HttpLoader
+        Runner     BackgroundRunner
+        RootCtx    context.Context
+}
+
+func NewCreateTaskUseCase(createTaskRepo CreateTaskRepository,
+        httpLoader HttpLoader,
+        runner BackgroundRunner,
+        rootCtx context.Context,
+) *CreateTaskUseCase <span class="cov8" title="1">{
+        return &amp;CreateTaskUseCase{
+                Repository: createTaskRepo,
+                HttpLoader: httpLoader,
+                Runner:     runner,
+                RootCtx:    rootCtx,
+        }
+}</span>
+
+// CreateTask функция создания таска
+func (ts *CreateTaskUseCase) CreateTask(ctx context.Context, task entity.Task) (idTask entity.IdTask, status entity.Status, err error) <span class="cov8" title="1">{
+        if ctx.Err() != nil </span><span class="cov8" title="1">{
+                return 0, "", fmt.Errorf("TaskService.CreateTask: %w", ctx.Err())
+        }</span>
+
+        <span class="cov8" title="1">idTask, err = ts.Repository.Create(ctx, task) //создаем таск в репо
+        if err != nil </span><span class="cov8" title="1">{
+                return 0, "", fmt.Errorf("TaskService.CreateTask: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">task.Id = idTask
+        ts.Runner.GoTask(ts.RootCtx, task, ts.RunDownload) // передаем корневой контекст
+        return task.Id, task.Status, nil</span>
+}
+
+// RunDownload запуск загрузок
+func (ts *CreateTaskUseCase) RunDownload(ctx context.Context, wgRoot *sync.WaitGroup, task entity.Task) error <span class="cov8" title="1">{
+        wgRoot.Add(1)
+        defer wgRoot.Done()
+        wg := &amp;sync.WaitGroup{}
+        //detachCtx := dctx.DetachContext(ctx)                                        // создаем независимую копию контекста т.к основной протухнет при ответе
+        loadCtx, cancel := context.WithTimeout(ctx, task.Timeout*time.Second) // от него создаем контекст для загрузчиков с общим таймаутом таска
+        defer cancel()
+        for _, file := range task.Files </span><span class="cov8" title="1">{
+                if loadCtx.Err() != nil </span><span class="cov8" title="1">{
+                        log.Printf("RunDownload завершен по контексту: %v", ctx.Err())
+                        return loadCtx.Err()
+                }</span>
+                //запускаем скачивание файлов асинхронно
+                <span class="cov8" title="1">wg.Add(1)
+                ts.Runner.GoFile(loadCtx, wg, task.Id, file, ts.DownloadFile)</span>
+        }
+        //ждем завершение загрузок или таймаута
+        <span class="cov8" title="1">wg.Wait()
+        ctxRep, cancelRep := context.WithTimeout(loadCtx, repCtxTimeout)
+        defer cancelRep()
+
+        if err := ts.Repository.UpdateStatus(ctxRep, task.Id, entity.TaskStatusDone); err != nil </span><span class="cov8" title="1">{
+                log.Printf("CreateTask.UpdateStatus taskId=%v: %s", task.Id, err)
+                return err
+        }</span> else<span class="cov8" title="1"> {
+                log.Printf("Загрузка таска завершена taskId=%v", task.Id)
+                return nil
+        }</span>
+}
+
+// DownloadFile запуск скачивания файла
+func (ts *CreateTaskUseCase) DownloadFile(ctx context.Context, wg *sync.WaitGroup, idTask entity.IdTask, file entity.File) error <span class="cov8" title="1">{
+        defer wg.Done()
+        if ctx.Err() != nil </span><span class="cov8" title="1">{
+                log.Printf("DownloadFile завершен по контексту: %v", ctx.Err())
+                return ctx.Err()
+        }</span>
+        //time.Sleep(60 * time.Second)
+        <span class="cov8" title="1">if data, err := ts.HttpLoader.Load(ctx, file.Url); err != nil </span><span class="cov8" title="1">{
+                if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) </span><span class="cov8" title="1">{
+                        file.Error = entity.FileErrTimeout
+                }</span> else<span class="cov8" title="1"> {
+                        file.Error = entity.FileErr
+                }</span>
+                <span class="cov8" title="1">log.Printf("Ошибка загрузки файла taskId=%v; url=%s : %s", idTask, file.Url, err)
+                ctxRep, cancelRep := context.WithTimeout(ctx, repCtxTimeout)
+                defer cancelRep()
+                if err = ts.Repository.UpdateFileErr(ctxRep, idTask, file.Url, file.Error); err != nil </span><span class="cov8" title="1">{
+                        return err
+                }</span>
+        } else<span class="cov8" title="1"> {
+                file.Data = data
+                ctxRep, cancelRep := context.WithTimeout(ctx, repCtxTimeout)
+                log.Printf("Файл загружен taskId=%v; url=%s", idTask, file.Url)
+                defer cancelRep()
+                if err = ts.Repository.UpdateFileData(ctxRep, idTask, file.Url, file.Data); err != nil </span><span class="cov8" title="1">{
+                        return err
+                }</span>
+        }
+        <span class="cov8" title="1">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file11" style="display: none">package task
+
+import (
+        "bcc-go-project/internal/domain/entity"
+        "context"
+        "fmt"
+)
+
+//go:generate mockgen -package task -source=get_task.go -destination=mock_get_task.go
+type GetTaskRepository interface {
+        Get(ctx context.Context, id entity.IdTask) (*entity.Task, error)
+}
+
+type GetTaskUseCase struct {
+        Repository GetTaskRepository
+}
+
+func NewGetTaskUseCase(getTaskRepo GetTaskRepository) *GetTaskUseCase <span class="cov8" title="1">{
+        return &amp;GetTaskUseCase{
+                Repository: getTaskRepo,
+        }
+}</span>
+
+// GetTask получить таск
+func (ts *GetTaskUseCase) GetTask(ctx context.Context, id entity.IdTask) (*entity.Task, error) <span class="cov8" title="1">{
+        if ctx.Err() != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("TaskService.GetTask: %w", ctx.Err())
+        }</span>
+        //получаем таск
+        <span class="cov8" title="1">ctx, cancel := context.WithTimeout(ctx, repCtxTimeout)
+        defer cancel()
+        task, err := ts.Repository.Get(ctx, id)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("TaskService.GetTask: %w", err)
+        }</span>
+        // отправляем успех
+        <span class="cov8" title="1">return task, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file12" style="display: none">package task
+
+import (
+        "bcc-go-project/internal/domain/entity"
+        "context"
+        "fmt"
+)
+
+//go:generate mockgen -package task -source=get_task_file.go -destination=mock_get_task_file.go
+type TaskFileRepository interface {
+        GetTaskFile(ctx context.Context, idTask entity.IdTask, idFile entity.IdFile) ([]byte, error)
+}
+
+type TaskFileUseCase struct {
+        Repository TaskFileRepository
+}
+
+func NewTaskFileUseCase(taskFileRepo TaskFileRepository) *TaskFileUseCase <span class="cov8" title="1">{
+        return &amp;TaskFileUseCase{
+                Repository: taskFileRepo,
+        }
+}</span>
+
+// GetTaskFile получить файл из таска
+func (ts *TaskFileUseCase) GetTaskFile(ctx context.Context, idTask entity.IdTask, idFile entity.IdFile) ([]byte, error) <span class="cov8" title="1">{
+        if ctx.Err() != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("TaskService.GetTaskFile: %w", ctx.Err())
+        }</span>
+        //получаем таск
+        <span class="cov8" title="1">ctx, cancel := context.WithTimeout(ctx, repCtxTimeout)
+        defer cancel()
+        data, err := ts.Repository.GetTaskFile(ctx, idTask, idFile)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("TaskService.GetTaskFile: %w", err)
+        }</span>
+        // отправляем успех
+        <span class="cov8" title="1">return data, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file13" style="display: none">// Code generated by MockGen. DO NOT EDIT.
+// Source: create_task.go
+
+// Package task is a generated GoMock package.
+package task
+
+import (
+        entity "bcc-go-project/internal/domain/entity"
+        context "context"
+        reflect "reflect"
+        sync "sync"
+
+        gomock "github.com/golang/mock/gomock"
+)
+
+// MockCreateTaskRepository is a mock of CreateTaskRepository interface.
+type MockCreateTaskRepository struct {
+        ctrl     *gomock.Controller
+        recorder *MockCreateTaskRepositoryMockRecorder
+}
+
+// MockCreateTaskRepositoryMockRecorder is the mock recorder for MockCreateTaskRepository.
+type MockCreateTaskRepositoryMockRecorder struct {
+        mock *MockCreateTaskRepository
+}
+
+// NewMockCreateTaskRepository creates a new mock instance.
+func NewMockCreateTaskRepository(ctrl *gomock.Controller) *MockCreateTaskRepository <span class="cov8" title="1">{
+        mock := &amp;MockCreateTaskRepository{ctrl: ctrl}
+        mock.recorder = &amp;MockCreateTaskRepositoryMockRecorder{mock}
+        return mock
+}</span>
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockCreateTaskRepository) EXPECT() *MockCreateTaskRepositoryMockRecorder <span class="cov8" title="1">{
+        return m.recorder
+}</span>
+
+// Create mocks base method.
+func (m *MockCreateTaskRepository) Create(ctx context.Context, task entity.Task) (entity.IdTask, error) <span class="cov8" title="1">{
+        m.ctrl.T.Helper()
+        ret := m.ctrl.Call(m, "Create", ctx, task)
+        ret0, _ := ret[0].(entity.IdTask)
+        ret1, _ := ret[1].(error)
+        return ret0, ret1
+}</span>
+
+// Create indicates an expected call of Create.
+func (mr *MockCreateTaskRepositoryMockRecorder) Create(ctx, task interface{}) *gomock.Call <span class="cov8" title="1">{
+        mr.mock.ctrl.T.Helper()
+        return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockCreateTaskRepository)(nil).Create), ctx, task)
+}</span>
+
+// UpdateFileData mocks base method.
+func (m *MockCreateTaskRepository) UpdateFileData(ctx context.Context, id entity.IdTask, url entity.Url, data []byte) error <span class="cov8" title="1">{
+        m.ctrl.T.Helper()
+        ret := m.ctrl.Call(m, "UpdateFileData", ctx, id, url, data)
+        ret0, _ := ret[0].(error)
+        return ret0
+}</span>
+
+// UpdateFileData indicates an expected call of UpdateFileData.
+func (mr *MockCreateTaskRepositoryMockRecorder) UpdateFileData(ctx, id, url, data interface{}) *gomock.Call <span class="cov8" title="1">{
+        mr.mock.ctrl.T.Helper()
+        return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateFileData", reflect.TypeOf((*MockCreateTaskRepository)(nil).UpdateFileData), ctx, id, url, data)
+}</span>
+
+// UpdateFileErr mocks base method.
+func (m *MockCreateTaskRepository) UpdateFileErr(ctx context.Context, id entity.IdTask, url entity.Url, fileErr entity.Error) error <span class="cov8" title="1">{
+        m.ctrl.T.Helper()
+        ret := m.ctrl.Call(m, "UpdateFileErr", ctx, id, url, fileErr)
+        ret0, _ := ret[0].(error)
+        return ret0
+}</span>
+
+// UpdateFileErr indicates an expected call of UpdateFileErr.
+func (mr *MockCreateTaskRepositoryMockRecorder) UpdateFileErr(ctx, id, url, fileErr interface{}) *gomock.Call <span class="cov8" title="1">{
+        mr.mock.ctrl.T.Helper()
+        return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateFileErr", reflect.TypeOf((*MockCreateTaskRepository)(nil).UpdateFileErr), ctx, id, url, fileErr)
+}</span>
+
+// UpdateStatus mocks base method.
+func (m *MockCreateTaskRepository) UpdateStatus(ctx context.Context, id entity.IdTask, status entity.Status) error <span class="cov8" title="1">{
+        m.ctrl.T.Helper()
+        ret := m.ctrl.Call(m, "UpdateStatus", ctx, id, status)
+        ret0, _ := ret[0].(error)
+        return ret0
+}</span>
+
+// UpdateStatus indicates an expected call of UpdateStatus.
+func (mr *MockCreateTaskRepositoryMockRecorder) UpdateStatus(ctx, id, status interface{}) *gomock.Call <span class="cov8" title="1">{
+        mr.mock.ctrl.T.Helper()
+        return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateStatus", reflect.TypeOf((*MockCreateTaskRepository)(nil).UpdateStatus), ctx, id, status)
+}</span>
+
+// MockBackgroundRunner is a mock of BackgroundRunner interface.
+type MockBackgroundRunner struct {
+        ctrl     *gomock.Controller
+        recorder *MockBackgroundRunnerMockRecorder
+}
+
+// MockBackgroundRunnerMockRecorder is the mock recorder for MockBackgroundRunner.
+type MockBackgroundRunnerMockRecorder struct {
+        mock *MockBackgroundRunner
+}
+
+// NewMockBackgroundRunner creates a new mock instance.
+func NewMockBackgroundRunner(ctrl *gomock.Controller) *MockBackgroundRunner <span class="cov8" title="1">{
+        mock := &amp;MockBackgroundRunner{ctrl: ctrl}
+        mock.recorder = &amp;MockBackgroundRunnerMockRecorder{mock}
+        return mock
+}</span>
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockBackgroundRunner) EXPECT() *MockBackgroundRunnerMockRecorder <span class="cov8" title="1">{
+        return m.recorder
+}</span>
+
+// GoFile mocks base method.
+func (m *MockBackgroundRunner) GoFile(ctx context.Context, wg *sync.WaitGroup, idTask entity.IdTask, file entity.File, f func(context.Context, *sync.WaitGroup, entity.IdTask, entity.File) error) <span class="cov8" title="1">{
+        m.ctrl.T.Helper()
+        m.ctrl.Call(m, "GoFile", ctx, wg, idTask, file, f)
+}</span>
+
+// GoFile indicates an expected call of GoFile.
+func (mr *MockBackgroundRunnerMockRecorder) GoFile(ctx, wg, idTask, file, f interface{}) *gomock.Call <span class="cov8" title="1">{
+        mr.mock.ctrl.T.Helper()
+        return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GoFile", reflect.TypeOf((*MockBackgroundRunner)(nil).GoFile), ctx, wg, idTask, file, f)
+}</span>
+
+// GoTask mocks base method.
+func (m *MockBackgroundRunner) GoTask(ctx context.Context, task entity.Task, f func(context.Context, *sync.WaitGroup, entity.Task) error) <span class="cov8" title="1">{
+        m.ctrl.T.Helper()
+        m.ctrl.Call(m, "GoTask", ctx, task, f)
+}</span>
+
+// GoTask indicates an expected call of GoTask.
+func (mr *MockBackgroundRunnerMockRecorder) GoTask(ctx, task, f interface{}) *gomock.Call <span class="cov8" title="1">{
+        mr.mock.ctrl.T.Helper()
+        return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GoTask", reflect.TypeOf((*MockBackgroundRunner)(nil).GoTask), ctx, task, f)
+}</span>
+
+// MockHttpLoader is a mock of HttpLoader interface.
+type MockHttpLoader struct {
+        ctrl     *gomock.Controller
+        recorder *MockHttpLoaderMockRecorder
+}
+
+// MockHttpLoaderMockRecorder is the mock recorder for MockHttpLoader.
+type MockHttpLoaderMockRecorder struct {
+        mock *MockHttpLoader
+}
+
+// NewMockHttpLoader creates a new mock instance.
+func NewMockHttpLoader(ctrl *gomock.Controller) *MockHttpLoader <span class="cov8" title="1">{
+        mock := &amp;MockHttpLoader{ctrl: ctrl}
+        mock.recorder = &amp;MockHttpLoaderMockRecorder{mock}
+        return mock
+}</span>
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockHttpLoader) EXPECT() *MockHttpLoaderMockRecorder <span class="cov8" title="1">{
+        return m.recorder
+}</span>
+
+// Load mocks base method.
+func (m *MockHttpLoader) Load(ctx context.Context, url entity.Url) ([]byte, error) <span class="cov8" title="1">{
+        m.ctrl.T.Helper()
+        ret := m.ctrl.Call(m, "Load", ctx, url)
+        ret0, _ := ret[0].([]byte)
+        ret1, _ := ret[1].(error)
+        return ret0, ret1
+}</span>
+
+// Load indicates an expected call of Load.
+func (mr *MockHttpLoaderMockRecorder) Load(ctx, url interface{}) *gomock.Call <span class="cov8" title="1">{
+        mr.mock.ctrl.T.Helper()
+        return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Load", reflect.TypeOf((*MockHttpLoader)(nil).Load), ctx, url)
+}</span>
+</pre>
+		
+		<pre class="file" id="file14" style="display: none">// Code generated by MockGen. DO NOT EDIT.
+// Source: get_task.go
+
+// Package task is a generated GoMock package.
+package task
+
+import (
+        entity "bcc-go-project/internal/domain/entity"
+        context "context"
+        reflect "reflect"
+
+        gomock "github.com/golang/mock/gomock"
+)
+
+// MockGetTaskRepository is a mock of GetTaskRepository interface.
+type MockGetTaskRepository struct {
+        ctrl     *gomock.Controller
+        recorder *MockGetTaskRepositoryMockRecorder
+}
+
+// MockGetTaskRepositoryMockRecorder is the mock recorder for MockGetTaskRepository.
+type MockGetTaskRepositoryMockRecorder struct {
+        mock *MockGetTaskRepository
+}
+
+// NewMockGetTaskRepository creates a new mock instance.
+func NewMockGetTaskRepository(ctrl *gomock.Controller) *MockGetTaskRepository <span class="cov8" title="1">{
+        mock := &amp;MockGetTaskRepository{ctrl: ctrl}
+        mock.recorder = &amp;MockGetTaskRepositoryMockRecorder{mock}
+        return mock
+}</span>
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockGetTaskRepository) EXPECT() *MockGetTaskRepositoryMockRecorder <span class="cov8" title="1">{
+        return m.recorder
+}</span>
+
+// Get mocks base method.
+func (m *MockGetTaskRepository) Get(ctx context.Context, id entity.IdTask) (*entity.Task, error) <span class="cov8" title="1">{
+        m.ctrl.T.Helper()
+        ret := m.ctrl.Call(m, "Get", ctx, id)
+        ret0, _ := ret[0].(*entity.Task)
+        ret1, _ := ret[1].(error)
+        return ret0, ret1
+}</span>
+
+// Get indicates an expected call of Get.
+func (mr *MockGetTaskRepositoryMockRecorder) Get(ctx, id interface{}) *gomock.Call <span class="cov8" title="1">{
+        mr.mock.ctrl.T.Helper()
+        return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockGetTaskRepository)(nil).Get), ctx, id)
+}</span>
+</pre>
+		
+		<pre class="file" id="file15" style="display: none">// Code generated by MockGen. DO NOT EDIT.
+// Source: get_task_file.go
+
+// Package task is a generated GoMock package.
+package task
+
+import (
+        entity "bcc-go-project/internal/domain/entity"
+        context "context"
+        reflect "reflect"
+
+        gomock "github.com/golang/mock/gomock"
+)
+
+// MockTaskFileRepository is a mock of TaskFileRepository interface.
+type MockTaskFileRepository struct {
+        ctrl     *gomock.Controller
+        recorder *MockTaskFileRepositoryMockRecorder
+}
+
+// MockTaskFileRepositoryMockRecorder is the mock recorder for MockTaskFileRepository.
+type MockTaskFileRepositoryMockRecorder struct {
+        mock *MockTaskFileRepository
+}
+
+// NewMockTaskFileRepository creates a new mock instance.
+func NewMockTaskFileRepository(ctrl *gomock.Controller) *MockTaskFileRepository <span class="cov8" title="1">{
+        mock := &amp;MockTaskFileRepository{ctrl: ctrl}
+        mock.recorder = &amp;MockTaskFileRepositoryMockRecorder{mock}
+        return mock
+}</span>
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockTaskFileRepository) EXPECT() *MockTaskFileRepositoryMockRecorder <span class="cov8" title="1">{
+        return m.recorder
+}</span>
+
+// GetTaskFile mocks base method.
+func (m *MockTaskFileRepository) GetTaskFile(ctx context.Context, idTask entity.IdTask, idFile entity.IdFile) ([]byte, error) <span class="cov8" title="1">{
+        m.ctrl.T.Helper()
+        ret := m.ctrl.Call(m, "GetTaskFile", ctx, idTask, idFile)
+        ret0, _ := ret[0].([]byte)
+        ret1, _ := ret[1].(error)
+        return ret0, ret1
+}</span>
+
+// GetTaskFile indicates an expected call of GetTaskFile.
+func (mr *MockTaskFileRepositoryMockRecorder) GetTaskFile(ctx, idTask, idFile interface{}) *gomock.Call <span class="cov8" title="1">{
+        mr.mock.ctrl.T.Helper()
+        return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTaskFile", reflect.TypeOf((*MockTaskFileRepository)(nil).GetTaskFile), ctx, idTask, idFile)
+}</span>
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
