@@ -122,17 +122,18 @@ func (ts *CreateTaskUseCase) DownloadFile(ctx context.Context, wg *sync.WaitGrou
 			file.Error = entity.FileErr
 		}
 		log.Printf("Ошибка загрузки файла taskId=%v; url=%s : %s", idTask, file.Url, err)
-		ctxRep, cancelRep := context.WithTimeout(ctx, repCtxTimeout)
+		detachCtx := dctx.DetachContext(ctx) // создаем независимую копию контекста т.к основной может протухнуть и не успеем записать в бд
+		ctxRep, cancelRep := context.WithTimeout(detachCtx, repCtxTimeout)
 		defer cancelRep()
 		if err = ts.Repository.UpdateFileErr(ctxRep, idTask, file.Url, file.Error); err != nil {
 			return err
 		}
 		return err
 	}
-
-	file.Data = data
-	ctxRep, cancelRep := context.WithTimeout(ctx, repCtxTimeout)
 	log.Printf("Файл загружен taskId=%v; url=%s", idTask, file.Url)
+	file.Data = data
+	detachCtx := dctx.DetachContext(ctx) // создаем независимую копию контекста т.к основной может протухнуть и не успеем записать в бд
+	ctxRep, cancelRep := context.WithTimeout(detachCtx, repCtxTimeout)
 	defer cancelRep()
 	if err = ts.Repository.UpdateFileData(ctxRep, idTask, file.Url, file.Data); err != nil {
 		return err
