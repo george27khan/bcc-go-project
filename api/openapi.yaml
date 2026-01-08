@@ -64,9 +64,7 @@ paths:
         "200":
           description: success
           content:
-            application/octet-stream:
-              schema:
-                $ref: "#/components/schemas/DownloadsIdResponse"
+            application/octet-stream: {}
         "400":
           $ref: '#/components/responses/BadRequest400'
         "404":

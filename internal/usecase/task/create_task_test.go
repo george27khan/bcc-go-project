@@ -44,16 +44,6 @@ func TestCreateTask(t *testing.T) {
 			expectedErr:    nil,
 		},
 		{
-			name: "context canceled",
-			prepare: func(tt *TestCase, m *mockCreateTask) {
-				var cancel context.CancelFunc
-				tt.ctx, cancel = context.WithCancel(tt.ctx)
-				cancel()
-			},
-			ctx:         context.Background(),
-			expectedErr: context.Canceled,
-		},
-		{
 			name: "context repo timeout",
 			prepare: func(tt *TestCase, m *mockCreateTask) {
 				//var cancel context.CancelFunc
@@ -83,7 +73,7 @@ func TestCreateTask(t *testing.T) {
 				tt.prepare(tt, m)
 			}
 
-			tf := NewCreateTaskUseCase(rep, loader, runner, context.Background())
+			tf := NewCreateTaskUseCase(rep, loader, runner)
 			idTask, status, err := tf.CreateTask(tt.ctx, tt.Task)
 			if tt.expectedErr != nil {
 				require.ErrorIs(t, err, tt.expectedErr)
@@ -127,23 +117,6 @@ func TestRunDownload(t *testing.T) {
 			expectedErr: nil,
 		},
 		{
-			name: "context canceled",
-			prepare: func(tt *TestCase, m *mockCreateTask) {
-				var cancel context.CancelFunc
-				tt.ctx, cancel = context.WithCancel(tt.ctx)
-				cancel()
-			},
-			ctx: context.Background(),
-			wg:  &sync.WaitGroup{},
-			Task: entity.Task{
-				Id:      entity.IdTask(0),
-				Status:  entity.TaskStatusProcess,
-				Timeout: 60 * time.Second,
-				Files:   []entity.File{{Url: "https://google.com"}},
-			},
-			expectedErr: context.Canceled,
-		},
-		{
 			name: "context timeout",
 			prepare: func(tt *TestCase, m *mockCreateTask) {
 				m.runner.EXPECT().GoFile(gomock.Any(), tt.wg, gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
@@ -177,7 +150,7 @@ func TestRunDownload(t *testing.T) {
 				tt.prepare(tt, m)
 			}
 
-			tf := NewCreateTaskUseCase(rep, loader, runner, context.Background())
+			tf := NewCreateTaskUseCase(rep, loader, runner)
 			err := tf.RunDownload(tt.ctx, tt.wg, tt.Task)
 			tt.wg.Wait()
 			if tt.expectedErr != nil {
@@ -212,20 +185,6 @@ func TestDownloadFile(t *testing.T) {
 			idTask:      1,
 			file:        entity.File{Url: "https://google.com"},
 			expectedErr: nil,
-		},
-		{
-			name: "context canceled",
-			prepare: func(tt *TestCase, m *mockCreateTask) {
-				tt.wg.Add(1)
-				var cancel context.CancelFunc
-				tt.ctx, cancel = context.WithCancel(tt.ctx)
-				cancel()
-			},
-			ctx:         context.Background(),
-			wg:          &sync.WaitGroup{},
-			idTask:      1,
-			file:        entity.File{Url: "https://google.com"},
-			expectedErr: context.Canceled,
 		},
 		{
 			name: "UpdateFileData error",
@@ -280,7 +239,7 @@ func TestDownloadFile(t *testing.T) {
 				tt.prepare(tt, m)
 			}
 
-			tf := NewCreateTaskUseCase(rep, loader, runner, context.Background())
+			tf := NewCreateTaskUseCase(rep, loader, runner)
 			err := tf.DownloadFile(tt.ctx, tt.wg, tt.idTask, tt.file)
 			tt.wg.Wait()
 			if tt.expectedErr != nil {

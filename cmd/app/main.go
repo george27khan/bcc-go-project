@@ -44,12 +44,12 @@ func main() {
 			ErrorHandler: server.SwaggerErrorHandlerFunc, // добавление обработчика ошибок на уровне проверки сваггером
 		},
 	))
-	taskRep := fileRep.NewTaskRepository()                                           // репозиторий
-	loader := http_loader.NewHttpLoader(&http.Client{})                              // загрузчик
-	runner := &task.AsyncRunner{WgRoot: wgBackRun}                                   // запуск загрузки в фоне
-	taskCreateUseCase := task.NewCreateTaskUseCase(taskRep, loader, runner, rootCtx) // юзкейс
-	taskGetUseCase := task.NewGetTaskUseCase(taskRep)                                // юзкейс
-	taskFileUseCase := task.NewTaskFileUseCase(taskRep)                              // юзкейс
+	taskRep := fileRep.NewTaskRepository()                                  // репозиторий
+	loader := http_loader.NewHttpLoader(&http.Client{})                     // загрузчик
+	runner := &task.AsyncRunner{WgRoot: wgBackRun}                          // запуск загрузки в фоне
+	taskCreateUseCase := task.NewCreateTaskUseCase(taskRep, loader, runner) // юзкейс
+	taskGetUseCase := task.NewGetTaskUseCase(taskRep)                       // юзкейс
+	taskFileUseCase := task.NewTaskFileUseCase(taskRep)                     // юзкейс
 	taskSrv := server.NewTaskServer(taskCreateUseCase, taskGetUseCase, taskFileUseCase)
 
 	// Регистрируем все эндпоинты из OpenAPI

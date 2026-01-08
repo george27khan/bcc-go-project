@@ -23,9 +23,6 @@ func NewGetTaskUseCase(getTaskRepo GetTaskRepository) *GetTaskUseCase {
 
 // GetTask получить таск
 func (ts *GetTaskUseCase) GetTask(ctx context.Context, id entity.IdTask) (*entity.Task, error) {
-	if ctx.Err() != nil {
-		return nil, fmt.Errorf("TaskService.GetTask: %w", ctx.Err())
-	}
 	//получаем таск
 	ctx, cancel := context.WithTimeout(ctx, repCtxTimeout)
 	defer cancel()

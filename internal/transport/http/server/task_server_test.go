@@ -53,21 +53,6 @@ func TestPostDownloads(t *testing.T) {
 			expectedErr:  nil,
 		},
 		{
-			name: "context canceled",
-			prepare: func(tt *TestCase, m *mockTaskCreate) {
-				var cancel context.CancelFunc
-				tt.ctx, cancel = context.WithCancel(tt.ctx)
-				cancel()
-			},
-			ctx:          context.Background(),
-			req:          PostDownloadsRequestObject{},
-			expectedType: PostDownloads500JSONResponse{},
-			expectFailResp: ErrorResponse{
-				Code:    ErrorCodeINTERNALSERVERERROR,
-				Message: "PostDownloads: context canceled",
-			},
-		},
-		{
 			name: "GetTask error",
 			prepare: func(tt *TestCase, m *mockTaskCreate) {
 				m.UseCase.EXPECT().CreateTask(gomock.Any(), gomock.Any()).Return(
@@ -214,21 +199,6 @@ func TestGetDownloadsId(t *testing.T) {
 			expectedErr:  nil,
 		},
 		{
-			name: "context canceled",
-			prepare: func(tt *TestCase, m *mockGetTask) {
-				var cancel context.CancelFunc
-				tt.ctx, cancel = context.WithCancel(tt.ctx)
-				cancel()
-			},
-			ctx:        context.Background(),
-			req:        GetDownloadsIdRequestObject{},
-			expectType: GetDownloadsId500JSONResponse{},
-			expectFailResp: ErrorResponse{
-				Code:    ErrorCodeINTERNALSERVERERROR,
-				Message: "GetDownloadsId: context canceled",
-			},
-		},
-		{
 			name: "GetTask error",
 			prepare: func(tt *TestCase, m *mockGetTask) {
 				m.UseCase.EXPECT().GetTask(gomock.Any(), gomock.Any()).Return(
@@ -331,21 +301,6 @@ func TestGetDownloadsIdFilesFileId(t *testing.T) {
 			expectType:   GetDownloadsIdFilesFileId200ApplicationoctetStreamResponse{},
 			expectedData: []byte("test"),
 			expectedErr:  nil,
-		},
-		{
-			name: "context canceled",
-			prepare: func(tt *TestCase, m *mockTaskFileUseCase) {
-				var cancel context.CancelFunc
-				tt.ctx, cancel = context.WithCancel(tt.ctx)
-				cancel()
-			},
-			ctx:        context.Background(),
-			req:        GetDownloadsIdFilesFileIdRequestObject{Id: 1, FileId: 1},
-			expectType: GetDownloadsIdFilesFileId500JSONResponse{},
-			expectFailResp: ErrorResponse{
-				Code:    ErrorCodeINTERNALSERVERERROR,
-				Message: "GetDownloadsIdFilesFileId: context canceled",
-			},
 		},
 		{
 			name: "GetTask error",

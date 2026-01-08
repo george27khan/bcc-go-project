@@ -44,17 +44,6 @@ func TestGetTask(t *testing.T) {
 			},
 		},
 		{
-			name: "context canceled",
-			prepare: func(tt *TestCase, m *mockGetTask) {
-				var cancel context.CancelFunc
-				tt.ctx, cancel = context.WithCancel(tt.ctx)
-				cancel()
-			},
-			ctx:         context.Background(),
-			expected:    nil,
-			expectedErr: context.Canceled,
-		},
-		{
 			name: "task not found",
 			prepare: func(tt *TestCase, m *mockGetTask) {
 				m.repo.EXPECT().Get(gomock.Any(), tt.idTask).

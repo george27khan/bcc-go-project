@@ -36,17 +36,6 @@ func TestGetTaskFile(t *testing.T) {
 			expected: []byte("Hello World"),
 		},
 		{
-			name: "context canceled",
-			prepare: func(tt *TestCase, m *mockGetTaskFile) {
-				var cancel context.CancelFunc
-				tt.ctx, cancel = context.WithCancel(tt.ctx)
-				cancel()
-			},
-			ctx:         context.Background(),
-			expected:    nil,
-			expectedErr: context.Canceled,
-		},
-		{
 			name: "task not found",
 			prepare: func(tt *TestCase, m *mockGetTaskFile) {
 				m.repo.EXPECT().GetTaskFile(gomock.Any(), gomock.Any(), gomock.Any()).

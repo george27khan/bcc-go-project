@@ -2,6 +2,7 @@ package task
 
 import (
 	"bcc-go-project/internal/domain/entity"
+	dctx "bcc-go-project/internal/pkg/detach_context"
 	"context"
 	"errors"
 	"fmt"
@@ -56,35 +57,28 @@ type CreateTaskUseCase struct {
 	Repository CreateTaskRepository
 	HttpLoader HttpLoader
 	Runner     BackgroundRunner
-	RootCtx    context.Context
 }
 
 func NewCreateTaskUseCase(createTaskRepo CreateTaskRepository,
 	httpLoader HttpLoader,
 	runner BackgroundRunner,
-	rootCtx context.Context,
 ) *CreateTaskUseCase {
 	return &CreateTaskUseCase{
 		Repository: createTaskRepo,
 		HttpLoader: httpLoader,
 		Runner:     runner,
-		RootCtx:    rootCtx,
 	}
 }
 
 // CreateTask функция создания таска
 func (ts *CreateTaskUseCase) CreateTask(ctx context.Context, task entity.Task) (idTask entity.IdTask, status entity.Status, err error) {
-	if ctx.Err() != nil {
-		return 0, "", fmt.Errorf("TaskService.CreateTask: %w", ctx.Err())
-	}
-
 	idTask, err = ts.Repository.Create(ctx, task) //создаем таск в репо
 	if err != nil {
 		return 0, "", fmt.Errorf("TaskService.CreateTask: %w", err)
 	}
 
 	task.Id = idTask
-	ts.Runner.GoTask(ts.RootCtx, task, ts.RunDownload) // передаем корневой контекст
+	ts.Runner.GoTask(ctx, task, ts.RunDownload) // передаем корневой контекст
 	return task.Id, task.Status, nil
 }
 
@@ -93,14 +87,10 @@ func (ts *CreateTaskUseCase) RunDownload(ctx context.Context, wgRoot *sync.WaitG
 	wgRoot.Add(1)
 	defer wgRoot.Done()
 	wg := &sync.WaitGroup{}
-	//detachCtx := dctx.DetachContext(ctx)                                        // создаем независимую копию контекста т.к основной протухнет при ответе
-	loadCtx, cancel := context.WithTimeout(ctx, task.Timeout*time.Second) // от него создаем контекст для загрузчиков с общим таймаутом таска
+	detachCtx := dctx.DetachContext(ctx)                                        // создаем независимую копию контекста т.к основной протухнет при ответе
+	loadCtx, cancel := context.WithTimeout(detachCtx, task.Timeout*time.Second) // от него создаем контекст для загрузчиков с общим таймаутом таска
 	defer cancel()
 	for _, file := range task.Files {
-		if loadCtx.Err() != nil {
-			log.Printf("RunDownload завершен по контексту: %v", ctx.Err())
-			return loadCtx.Err()
-		}
 		//запускаем скачивание файлов асинхронно
 		wg.Add(1)
 		ts.Runner.GoFile(loadCtx, wg, task.Id, file, ts.DownloadFile)
@@ -122,10 +112,6 @@ func (ts *CreateTaskUseCase) RunDownload(ctx context.Context, wgRoot *sync.WaitG
 // DownloadFile запуск скачивания файла
 func (ts *CreateTaskUseCase) DownloadFile(ctx context.Context, wg *sync.WaitGroup, idTask entity.IdTask, file entity.File) error {
 	defer wg.Done()
-	if ctx.Err() != nil {
-		log.Printf("DownloadFile завершен по контексту: %v", ctx.Err())
-		return ctx.Err()
-	}
 	//time.Sleep(60 * time.Second)
 	if data, err := ts.HttpLoader.Load(ctx, file.Url); err != nil {
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {

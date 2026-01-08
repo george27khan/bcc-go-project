@@ -23,9 +23,6 @@ func NewTaskFileUseCase(taskFileRepo TaskFileRepository) *TaskFileUseCase {
 
 // GetTaskFile получить файл из таска
 func (ts *TaskFileUseCase) GetTaskFile(ctx context.Context, idTask entity.IdTask, idFile entity.IdFile) ([]byte, error) {
-	if ctx.Err() != nil {
-		return nil, fmt.Errorf("TaskService.GetTaskFile: %w", ctx.Err())
-	}
 	//получаем таск
 	ctx, cancel := context.WithTimeout(ctx, repCtxTimeout)
 	defer cancel()
