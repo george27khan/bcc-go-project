@@ -103,17 +103,19 @@ func (ts *CreateTaskUseCase) RunDownload(ctx context.Context, wgRoot *sync.WaitG
 	if err := ts.Repository.UpdateStatus(ctxRep, task.Id, entity.TaskStatusDone); err != nil {
 		log.Printf("CreateTask.UpdateStatus taskId=%v: %s", task.Id, err)
 		return err
-	} else {
-		log.Printf("Загрузка таска завершена taskId=%v", task.Id)
-		return nil
 	}
+
+	log.Printf("Загрузка таска завершена taskId=%v", task.Id)
+	return nil
+
 }
 
 // DownloadFile запуск скачивания файла
 func (ts *CreateTaskUseCase) DownloadFile(ctx context.Context, wg *sync.WaitGroup, idTask entity.IdTask, file entity.File) error {
 	defer wg.Done()
 	//time.Sleep(60 * time.Second)
-	if data, err := ts.HttpLoader.Load(ctx, file.Url); err != nil {
+	data, err := ts.HttpLoader.Load(ctx, file.Url)
+	if err != nil {
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 			file.Error = entity.FileErrTimeout
 		} else {
@@ -125,14 +127,15 @@ func (ts *CreateTaskUseCase) DownloadFile(ctx context.Context, wg *sync.WaitGrou
 		if err = ts.Repository.UpdateFileErr(ctxRep, idTask, file.Url, file.Error); err != nil {
 			return err
 		}
-	} else {
-		file.Data = data
-		ctxRep, cancelRep := context.WithTimeout(ctx, repCtxTimeout)
-		log.Printf("Файл загружен taskId=%v; url=%s", idTask, file.Url)
-		defer cancelRep()
-		if err = ts.Repository.UpdateFileData(ctxRep, idTask, file.Url, file.Data); err != nil {
-			return err
-		}
+		return err
+	}
+
+	file.Data = data
+	ctxRep, cancelRep := context.WithTimeout(ctx, repCtxTimeout)
+	log.Printf("Файл загружен taskId=%v; url=%s", idTask, file.Url)
+	defer cancelRep()
+	if err = ts.Repository.UpdateFileData(ctxRep, idTask, file.Url, file.Data); err != nil {
+		return err
 	}
 	return nil
 }
