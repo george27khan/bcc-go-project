@@ -24,6 +24,7 @@ var (
 		entity.FileErrTimeout: UrlErrErrorCodeTIMEOUT,
 	}
 )
+var _ StrictServerInterface = (*TaskServer)(nil)
 
 type TaskCreateUseCase interface {
 	CreateTask(ctx context.Context, task entity.Task) (id entity.IdTask, status entity.Status, err error)

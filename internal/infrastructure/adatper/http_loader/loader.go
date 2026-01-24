@@ -8,6 +8,7 @@ import (
 	"net/http"
 )
 
+// HttpClient интерфейс нужен чтобы сокрыть лишние методы базового http клиента
 type HttpClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
@@ -16,11 +17,11 @@ type HttpLoader struct {
 	client HttpClient
 }
 
-func NewHttpLoader(client HttpClient) *HttpLoader {
-	return &HttpLoader{client: client}
+func NewHttpLoader() HttpLoader {
+	return HttpLoader{client: &http.Client{}}
 }
 
-func (l *HttpLoader) Load(ctx context.Context, url entity.Url) ([]byte, error) {
+func (l HttpLoader) Load(ctx context.Context, url entity.Url) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, string(url), nil)
 	if err != nil {
 		return nil, fmt.Errorf("HttpLoader.Load error: %w", err)

@@ -31,10 +31,14 @@ type AsyncRunner struct {
 	WgRoot *sync.WaitGroup
 }
 
-func (ar *AsyncRunner) GoTask(ctx context.Context, task entity.Task, f func(context.Context, *sync.WaitGroup, entity.Task) error) {
+func NewAsyncRunner() AsyncRunner {
+	return AsyncRunner{WgRoot: &sync.WaitGroup{}}
+}
+
+func (ar AsyncRunner) GoTask(ctx context.Context, task entity.Task, f func(context.Context, *sync.WaitGroup, entity.Task) error) {
 	go f(ctx, ar.WgRoot, task)
 }
-func (ar *AsyncRunner) GoFile(ctx context.Context, wg *sync.WaitGroup, idTask entity.IdTask, file entity.File, f func(context.Context, *sync.WaitGroup, entity.IdTask, entity.File) error) {
+func (ar AsyncRunner) GoFile(ctx context.Context, wg *sync.WaitGroup, idTask entity.IdTask, file entity.File, f func(context.Context, *sync.WaitGroup, entity.IdTask, entity.File) error) {
 	go f(ctx, wg, idTask, file)
 }
 
@@ -113,7 +117,7 @@ func (ts *CreateTaskUseCase) RunDownload(ctx context.Context, wgRoot *sync.WaitG
 // DownloadFile запуск скачивания файла
 func (ts *CreateTaskUseCase) DownloadFile(ctx context.Context, wg *sync.WaitGroup, idTask entity.IdTask, file entity.File) error {
 	defer wg.Done()
-	//time.Sleep(60 * time.Second)
+	time.Sleep(20 * time.Second)
 	data, err := ts.HttpLoader.Load(ctx, file.Url)
 	if err != nil {
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
